@@ -97,8 +97,8 @@ class FiscalReportMachoteRegression(unittest.TestCase):
 
     def test_service_worker_cache_bumped_for_report_change(self):
         sw=(ROOT/'sw.js').read_text(encoding='utf-8')
-        self.assertIn("fiscalizacion-bi-v27-3-1-rectificacion-datos",sw)
-        self.assertIn("const APP_VERSION='27.3.0-FINAL'",HTML)
+        self.assertIn("fiscalizacion-bi-v27-3-2-import-compat",sw)
+        self.assertIn("const APP_VERSION='27.3.2-FINAL'",HTML)
 
     def test_docx_uses_final_fiscal_report_machote_labels(self):
         start=HTML.index('async function makeDocx(c)')

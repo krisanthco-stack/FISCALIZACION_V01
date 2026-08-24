@@ -11,3 +11,8 @@ Cambios puntuales incorporados:
 Abra index.html. Si la aplicación estaba instalada, pulse Actualizar para activar la nueva caché.
 
 - V27.3: control de estrés de PDF: filas extensas, múltiples defectos, firma contenida y bloques críticos sin superposición.
+
+
+V27.3.2 — Compatibilidad de carga en Trámites
+- Cargar JSON / ZIP acepta respaldos actuales y estructuras recuperables de versiones anteriores.
+- No reemplaza ni borra expedientes existentes; combina por ID o número de trámite.

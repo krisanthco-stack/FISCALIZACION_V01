@@ -1,0 +1,31 @@
+{
+  "version": "27.3.2-FINAL",
+  "scope": "Solo Trámites > Cargar JSON / ZIP",
+  "root_cause": "El importador V27.3.1 exigía estructuras y nombres actuales: expediente.json con esquema FiscalizacionBIExport, o wrappers JSON limitados. Por eso rechazaba respaldos de versiones anteriores y ZIP con JSON en otras rutas.",
+  "changes": [
+    "Reconocimiento recursivo de expediente/case/caso, expedientes/cases/casos/registros y respaldos anidados.",
+    "Migración de aliases históricos de campos y grupos en español/inglés hacia el modelo V27 antes de normalizar.",
+    "Carga desde Trámites de ZIP con expedientes.json, incluso respaldos completos de Gestión y versiones anteriores.",
+    "Carga de ZIP legado con cualquier JSON interno que contenga expedientes reconocibles.",
+    "Restauración de fotos, documentos y firmas cuando el ZIP incluye adjuntos.json con rutas válidas.",
+    "Se conserva la fusión sin duplicar: mismo id o mismo número de trámite se actualiza/combina, no se borra."
+  ],
+  "protected": [
+    "Navegación horizontal",
+    "Acordeones MD(9)/V27",
+    "Fiscalización",
+    "Informes",
+    "Rectificación",
+    "Gestión",
+    "Generadores PDF/DOCX",
+    "IndexedDB existente"
+  ],
+  "tests": [
+    "helpers legacy JSON",
+    "ZIP arbitrario con JSON anidado",
+    "ZIP de respaldo completo antiguo",
+    "regresión V27",
+    "sintaxis JavaScript",
+    "integridad ZIP final"
+  ]
+}
