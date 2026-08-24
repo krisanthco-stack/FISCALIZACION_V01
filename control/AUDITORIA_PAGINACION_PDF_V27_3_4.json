@@ -1,0 +1,84 @@
+{
+  "version": "27.3.4-FINAL",
+  "alcance": "Solo maquetación/paginación PDF de Informe Técnico + Resolución y Solicitud de rectificación MS_FBI_RD.",
+  "causas_raiz": [
+    "El contenedor .report-page tenía min-height 10.55in dentro de un @page Carta con márgenes, excediendo el área imprimible y creando páginas casi vacías.",
+    "El bloque completo de rechazo de MS_FBI_RD tenía break-inside: avoid-page, por lo que saltaba entero aun cuando quedaba espacio útil."
+  ],
+  "correcciones": [
+    "En impresión se elimina min-height/padding/overflow rígidos de .report-page y se desactivan saltos artificiales entre las dos secciones técnicas.",
+    "Se ocultan los pies estáticos de página en impresión para evitar páginas físicas dedicadas solo al pie.",
+    "La Resolución inicia como documento separado y su bloque Responsable + Firma se compacta exclusivamente en impresión para caber cuando existe espacio suficiente.",
+    "Objeto de rechazo puede fragmentarse de forma controlada; se usa thead repetible y tbody fragmentable.",
+    "Fecha/oficio se mantiene en bloque no fragmentable y separado del rechazo.",
+    "Nota y firma siguen protegidas contra división y la firma permanece dentro de tabla."
+  ],
+  "pruebas": {
+    "pytest": "24 passed",
+    "firma_docx": "PASS: proporción y caja correctas",
+    "javascript": "node --check OK",
+    "stress_antes": {
+      "informe_paginas": 6,
+      "rectificacion_paginas": 2,
+      "rectificacion_espacio_blanco_inferior_p1_pt": 213.9,
+      "objeto_rechazo_en_p1": false
+    },
+    "stress_despues": {
+      "report": {
+        "pages": 3,
+        "pages_detail": [
+          {
+            "page": 1,
+            "chars": 1980,
+            "blank_bottom_pt": 70.1
+          },
+          {
+            "page": 2,
+            "chars": 654,
+            "blank_bottom_pt": 307.8
+          },
+          {
+            "page": 3,
+            "chars": 2580,
+            "blank_bottom_pt": 44.9
+          }
+        ]
+      },
+      "rectification": {
+        "pages": 2,
+        "pages_detail": [
+          {
+            "page": 1,
+            "chars": 2935,
+            "blank_bottom_pt": 36.1
+          },
+          {
+            "page": 2,
+            "chars": 810,
+            "blank_bottom_pt": 554.4
+          }
+        ],
+        "date_y1": 159.6,
+        "rejection_y0": 588.7,
+        "second_rejection_on_page1": true,
+        "overlap": false
+      }
+    },
+    "resultado_geometria": {
+      "tablas_desbordadas": 0,
+      "celdas_desbordadas": 0,
+      "firma_informe_contenida": true,
+      "firma_rectificacion_contenida": true,
+      "fecha_rechazo_superpuestos": false
+    }
+  },
+  "regresion_protegida": [
+    "Navegación horizontal V27",
+    "Acordeones MD(9)",
+    "Gestión",
+    "JSON/ZIP y compatibilidad histórica",
+    "IndexedDB",
+    "Informe/Oficios",
+    "Generación DOCX y firma"
+  ]
+}

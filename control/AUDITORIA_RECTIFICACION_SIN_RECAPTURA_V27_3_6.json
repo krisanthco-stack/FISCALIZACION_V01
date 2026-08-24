@@ -1,0 +1,116 @@
+{
+  "version": "27.3.6-FINAL",
+  "base": "27.3.5-FINAL",
+  "scope": "Solo Solicitud de rectificación · MS_FBI_RD",
+  "checks": [
+    {
+      "name": "CSS principal de la aplicación sin cambios",
+      "ok": true,
+      "detail": "4 bloques"
+    },
+    {
+      "name": "Navegación horizontal sin cambios",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Módulo Gestión sin cambios",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Informe técnico + resolución sin cambios",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Bloque unificado presente",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Acordeón manual objeto/motivo eliminado",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Notificación y seguimiento eliminado",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Sin recaptura manual de datos",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Datos ausentes editables en vista PDF",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Derecho no se inventa como 000",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Objeto/motivo automático conservado",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Validación no bloquea por datos ausentes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "IDs HTML únicos",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Master MS_FBI_RD byte por byte original",
+      "ok": true,
+      "detail": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420"
+    },
+    {
+      "name": "Imagen base del machote sin cambios",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Master original preservado: MACHOTE_APROBACION-F.docx",
+      "ok": true,
+      "detail": "0a598478b0a9585cd0a2327f0205a1ff8fabb098d86fcd7a8f76b2c989b9ac7a"
+    },
+    {
+      "name": "Master original preservado: MACHOTE_RECHAZO.docx",
+      "ok": true,
+      "detail": "7be4b0a3e129826e103ca6f8e3f0f80142d10a82d1379786b364f71b00e07e82"
+    },
+    {
+      "name": "Master original preservado: MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx",
+      "ok": true,
+      "detail": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420"
+    },
+    {
+      "name": "Sintaxis JavaScript",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Prueba estructura rectificación",
+      "ok": true,
+      "detail": "PASS"
+    },
+    {
+      "name": "Prueba sincronización toma de datos",
+      "ok": true,
+      "detail": "PASS sync/validation"
+    }
+  ],
+  "passed": 21,
+  "total": 21,
+  "status": "PASS",
+  "html_sha256": "48fd3beb7f0a0bc779ab0b71fd20c88d77cc74a6ed35654a894765545c3512b3"
+}

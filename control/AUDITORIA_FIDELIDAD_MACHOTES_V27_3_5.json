@@ -1,0 +1,52 @@
+{
+  "version": "27.3.5-FINAL",
+  "regla_principal": "Los machotes originales son masters inalterables. Solo se sustituyen datos variables; no se rediseñan imágenes, letras, tablas, firmas, encabezados, pies ni proporciones.",
+  "base_aplicacion": "V27.3.4",
+  "sha256_base_html": "ccf543e6cd275dab06f188a6c0df011e9e352575ee9d267d1c57786aa677a70f",
+  "sha256_final_html": "be92e269462f20d3aa48371f3ce48b03fb6fc2e0a8835e14773a1b0f51955332",
+  "masters_originales": {
+    "MS_FBI_RD": {
+      "archivo": "MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx",
+      "sha256": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+      "embebido_en_html_sha256": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+      "coincide_byte_a_byte": true
+    },
+    "APROBACION": {
+      "archivo": "MACHOTE_APROBACION-F.docx",
+      "sha256": "0a598478b0a9585cd0a2327f0205a1ff8fabb098d86fcd7a8f76b2c989b9ac7a",
+      "estado": "preservado sin modificaciones"
+    },
+    "RECHAZO": {
+      "archivo": "MACHOTE_RECHAZO.docx",
+      "sha256": "7be4b0a3e129826e103ca6f8e3f0f80142d10a82d1379786b364f71b00e07e82",
+      "estado": "preservado sin modificaciones"
+    }
+  },
+  "auditoria_regresion": {
+    "css_principal_identico": true,
+    "ids_eliminados": [
+      "rectificationSuggestBtn"
+    ],
+    "ids_agregados": [],
+    "funciones_eliminadas": [],
+    "unico_id_eliminado_autorizado": "rectificationSuggestBtn",
+    "gestion_json_zip_preservados": true,
+    "navegacion_horizontal_preservada": true,
+    "acordeones_preservados": true
+  },
+  "correcciones_MS_FBI_RD": [
+    "El DOCX se genera desde el archivo original exacto, no desde una reconstruccion.",
+    "El PDF/vista previa usa una pagina base rasterizada directamente desde el master original y superpone solo datos variables.",
+    "No se inserta la firma de la Resolucion en MS_FBI_RD.",
+    "La tabla y el espacio FIRMA DEL PERITO VALUADOR permanecen intactos.",
+    "Objeto y motivo se derivan automaticamente de Informe Tecnico + Resolucion; no se marcan manualmente.",
+    "Datos que no existen en Informe/Resolucion permanecen editables en el modulo."
+  ],
+  "verificacion_visual": {
+    "similitud_identidad_docx": 99.9404,
+    "media_interna_original_preservada": true,
+    "tabla_firma_original_preservada": true,
+    "pagina_stress": 1,
+    "resultado_stress": "sin superposicion; firma y tarjeta institucional permanecen en sus posiciones originales"
+  }
+}
