@@ -1,0 +1,66 @@
+{
+  "version_entrega": "V27.3.1",
+  "base": "V27.3 PDF_LAYOUT_FINAL",
+  "alcance": "Únicamente Solicitud de rectificación · MS_FBI_RD",
+  "regla_aplicada": "Los datos que aparecen en el Informe se reutilizan desde el mismo expediente y no se recapturan. Los datos que no aparecen en el Informe permanecen editables.",
+  "datos_heredados_del_informe": [
+    {
+      "oficio": "Consecutivo DBI",
+      "fuente": "general.tramite",
+      "editable": false
+    },
+    {
+      "oficio": "Propietario",
+      "fuente": "general.owner",
+      "editable": false
+    },
+    {
+      "oficio": "Identificación",
+      "fuente": "general.ownerId",
+      "editable": false
+    },
+    {
+      "oficio": "N.° de finca",
+      "fuente": "general.finca",
+      "editable": false
+    },
+    {
+      "oficio": "N.° de plano",
+      "fuente": "general.plano",
+      "editable": false
+    }
+  ],
+  "campos_editables_no_presentes_en_informe": [
+    "Número de oficio",
+    "Fecha de oficio",
+    "Derecho",
+    "Distrito del inmueble",
+    "Dirección de finca / folio",
+    "Dirección fiscal",
+    "Provincia",
+    "Cantón",
+    "Distrito del propietario",
+    "Celular",
+    "Teléfono",
+    "Correo",
+    "Representante legal",
+    "Cédula representante",
+    "Celular representante",
+    "Fax",
+    "Otro teléfono",
+    "Zona",
+    "Objeto y motivo de rectificación",
+    "Notificador",
+    "Persona que recibe",
+    "Fecha real de notificación",
+    "Observaciones"
+  ],
+  "comportamiento": "Se eliminó el autollenado de campos no presentes en el Informe desde visit/location. Valores ya guardados se conservan y siguen siendo editables.",
+  "otros_modulos": "Sin cambios funcionales ni visuales.",
+  "verificacion": {
+    "regresion_base": "15/15",
+    "layout_pdf": "4/4",
+    "prueba_especifica_herencia": "OK",
+    "javascript_sintaxis": "OK"
+  }
+}
