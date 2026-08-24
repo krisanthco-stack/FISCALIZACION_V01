@@ -1,0 +1,212 @@
+{
+  "version": "1.0",
+  "submodule_key": "MS_FBI_RD",
+  "canonical_source_template": "MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx",
+  "application_template": "MS_FBI_RD_MACHOTE_APLICACION_V1.docx",
+  "document_identity": {
+    "printed_code": "BI-001",
+    "printed_version": "1.0",
+    "printed_date": "Julio 2026",
+    "numbering_prefix_observed_in_master": "MS-DFBI-RD",
+    "naming_issue": "El nombre solicitado/archivo usa MS-FBI-RD, pero el oficio impreso usa MS-DFBI-RD. Debe definirse un único prefijo oficial antes de automatizar la numeración."
+  },
+  "fields": [
+    {
+      "token": "«OFICIO»",
+      "key": "oficio_numero",
+      "required": true,
+      "group": "documento",
+      "source": "secuencia anual/configuración"
+    },
+    {
+      "token": "«FECHA_OFICIO»",
+      "key": "fecha_oficio",
+      "required": true,
+      "group": "documento",
+      "source": "fecha de emisión"
+    },
+    {
+      "token": "«NOMBRE»",
+      "key": "propietario_nombre",
+      "required": true,
+      "group": "propietario",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«CEDULA»",
+      "key": "propietario_identificacion",
+      "required": true,
+      "group": "propietario",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«DIRECCION_FISCAL»",
+      "key": "direccion_fiscal",
+      "required": true,
+      "group": "propietario",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«PROVINCIA»",
+      "key": "provincia",
+      "required": false,
+      "group": "propietario",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«CANTON»",
+      "key": "canton",
+      "required": false,
+      "group": "propietario",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«DISTRITO»",
+      "key": "distrito",
+      "required": false,
+      "group": "propietario",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«CELULAR»",
+      "key": "celular",
+      "required": false,
+      "group": "propietario",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«TELEFONO»",
+      "key": "telefono",
+      "required": false,
+      "group": "propietario",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«CORREO»",
+      "key": "correo",
+      "required": false,
+      "group": "propietario",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«REP_LEGAL»",
+      "key": "representante_legal",
+      "required": false,
+      "group": "representante",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«REP_CEDULA»",
+      "key": "representante_identificacion",
+      "required": false,
+      "group": "representante",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«REP_CEL»",
+      "key": "representante_celular",
+      "required": false,
+      "group": "representante",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«FAX»",
+      "key": "fax",
+      "required": false,
+      "group": "representante",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«OTRO_TEL»",
+      "key": "otro_telefono",
+      "required": false,
+      "group": "representante",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«ZONA»",
+      "key": "zona",
+      "required": false,
+      "group": "representante",
+      "source": "expediente/registro"
+    },
+    {
+      "token": "«DBI»",
+      "key": "consecutivo_dbi",
+      "required": true,
+      "group": "inmueble",
+      "source": "declaración/expediente"
+    },
+    {
+      "token": "«FINCA»",
+      "key": "numero_finca",
+      "required": true,
+      "group": "inmueble",
+      "source": "registro/expediente"
+    },
+    {
+      "token": "«DERECHO»",
+      "key": "derecho",
+      "required": true,
+      "group": "inmueble",
+      "source": "registro/expediente"
+    },
+    {
+      "token": "«PLANO»",
+      "key": "numero_plano",
+      "required": false,
+      "group": "inmueble",
+      "source": "registro/expediente"
+    },
+    {
+      "token": "«DIST_FINCA»",
+      "key": "distrito_inmueble",
+      "required": true,
+      "group": "inmueble",
+      "source": "registro/expediente"
+    },
+    {
+      "token": "«DIRECCION_FINCA»",
+      "key": "direccion_finca_folio",
+      "required": true,
+      "group": "inmueble",
+      "source": "expediente"
+    },
+    {
+      "token": "«OBJETO_1»",
+      "key": "objeto_rechazo_1",
+      "required": true,
+      "group": "rectificacion",
+      "source": "selección usuario"
+    },
+    {
+      "token": "«MOTIVO_1»",
+      "key": "motivo_simplificado_1",
+      "required": true,
+      "group": "rectificacion",
+      "source": "captura usuario/catálogo"
+    },
+    {
+      "token": "«OBJETO_2»",
+      "key": "objeto_rechazo_2",
+      "required": false,
+      "group": "rectificacion",
+      "source": "selección usuario"
+    },
+    {
+      "token": "«MOTIVO_2»",
+      "key": "motivo_simplificado_2",
+      "required": false,
+      "group": "rectificacion",
+      "source": "captura usuario/catálogo"
+    }
+  ],
+  "validation_rules": [
+    "No emitir si falta propietario, identificación, finca, DBI, objeto de rechazo o motivo.",
+    "No dejar tokens sin sustituir en un documento emitido.",
+    "No reutilizar datos de ejemplo del machote fuente como valores por defecto.",
+    "La cantidad de objetos/motivos debe ser ampliable; el machote visual muestra dos filas.",
+    "La numeración del oficio debe ser única por año y transaccional.",
+    "Conservar sin modificación el texto legal del machote final hasta aprobación formal de una nueva versión."
+  ]
+}

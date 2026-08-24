@@ -1,0 +1,50 @@
+{
+  "baseline": "V26-V27",
+  "change_type": "incremental_patch_only",
+  "freeze": {
+    "module_name": "INFORMES",
+    "reports": [
+      "INFORME TÉCNICO + RESOLUCIÓN",
+      "SOLICITUD DE RECTIFICACIÓN MS_FBI_RD"
+    ],
+    "management_required_actions": [
+      "Cargar/Importar JSON",
+      "Descargar/Exportar JSON"
+    ],
+    "preserve_all_existing_v26_v27_functions": true
+  },
+  "authorized_changes": [
+    "Agregar/integrar Solicitud de Rectificación MS_FBI_RD dentro de INFORMES",
+    "Restaurar funciones/nombres perdidos por regresión",
+    "Restaurar paleta V26-V27",
+    "Oscurecer únicamente los verdes de la paleta original"
+  ],
+  "forbidden_changes": [
+    "Renombrar INFORMES a PRODUCTOS DE SALIDA",
+    "Recrear módulos existentes",
+    "Eliminar Cargar/Importar JSON",
+    "Eliminar Descargar/Exportar JSON",
+    "Cambiar colores no verdes",
+    "Introducir flujos o estados nuevos sin solicitud expresa"
+  ],
+  "document_masters": {
+    "fiscalizacion": "Informe_Fiscalizacion_V01_MACHOTE_FINAL.docx",
+    "rectificacion": "MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx",
+    "rectificacion_parametrizada": "MS_FBI_RD_MACHOTE_APLICACION_V1.docx"
+  },
+  "release_gate": [
+    "T-01",
+    "T-02",
+    "T-03",
+    "T-04",
+    "T-05",
+    "T-06",
+    "T-07",
+    "T-08",
+    "T-09",
+    "T-10",
+    "T-11",
+    "T-12"
+  ],
+  "execution_note": "Por instrucción expresa se generó una recuperación ejecutable offline basada únicamente en el contrato funcional accesible, los dos machotes finales y la auditoría conservada. No se afirma identidad byte-a-byte con el HTML V26-V27 original, cuyos bytes no estaban disponibles."
+}

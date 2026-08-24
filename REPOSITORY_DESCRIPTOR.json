@@ -1,0 +1,19 @@
+{
+  "name": "SARAPIQUI_FISCALIZACION_V26_V27_FINAL_REPO",
+  "baseline": "V26-V27",
+  "repository_type": "application_and_control_repository",
+  "application_baseline_present": false,
+  "application_status_file": "app_baseline/STATUS.json",
+  "module_name": "INFORMES",
+  "expected_outputs": [
+    "INFORME TÉCNICO + RESOLUCIÓN",
+    "SOLICITUD DE RECTIFICACIÓN MS_FBI_RD"
+  ],
+  "load_note": "Paquete ejecutable y de control. Abrir index.html; app/index.html contiene la aplicación offline. application_baseline_present=false significa únicamente que los bytes originales V26-V27 no estaban disponibles para comparación literal.",
+  "portable_archive_requirement": "single_root_directory",
+  "application_entrypoint": "app/index.html",
+  "portable_entrypoint": "index.html",
+  "application_executable_present": true,
+  "application_mode": "offline_browser_recovery_from_accessible_v26_v27_contract",
+  "notes": "Executable recovery build created from the accessible V26-V27 functional contract and approved masters. Original V26-V27 source bytes were not present."
+}

@@ -1,0 +1,33 @@
+from pathlib import Path
+import json, zipfile
+
+ROOT = Path(__file__).resolve().parents[1]
+APP = ROOT / 'app' / 'index.html'
+
+
+def test_executable_html_exists_and_contract_markers():
+    assert APP.exists(), 'app/index.html must exist'
+    text = APP.read_text(encoding='utf-8')
+    for marker in ['GESTIÓN', 'FISCALIZACIÓN', 'INFORMES', 'AUDITORÍA',
+                   'Cargar/Importar JSON', 'Descargar/Exportar JSON',
+                   'INFORME TÉCNICO + RESOLUCIÓN', 'SOLICITUD DE RECTIFICACIÓN MS_FBI_RD']:
+        assert marker in text
+    assert 'PRODUCTOS DE SALIDA' not in text
+
+
+def test_two_official_masters_and_parametrized_fiscal_master_exist():
+    paths = [
+        ROOT/'templates/final/Informe_Fiscalizacion_V01_MACHOTE_FINAL.docx',
+        ROOT/'templates/final/MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx',
+        ROOT/'templates/parametrized/MS_FBI_RD_MACHOTE_APLICACION_V1.docx',
+        ROOT/'templates/parametrized/Informe_Fiscalizacion_APLICACION_V1.docx',
+    ]
+    for path in paths:
+        assert path.exists(), path
+        assert zipfile.is_zipfile(path), path
+
+
+def test_repository_descriptor_declares_executable_app():
+    data=json.loads((ROOT/'REPOSITORY_DESCRIPTOR.json').read_text(encoding='utf-8'))
+    assert data.get('application_entrypoint') == 'app/index.html'
+    assert data.get('application_executable_present') is True

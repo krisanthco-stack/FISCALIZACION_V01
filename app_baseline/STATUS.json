@@ -1,0 +1,8 @@
+{
+  "baseline": "V26-V27",
+  "status": "original_v26_v27_bytes_not_present_recovery_executable_present",
+  "policy": "preserve_accessible_contract_and_audit_history",
+  "next_action_when_available": "import exact baseline bytes, run regression gate, then apply incremental patch only",
+  "recovery_entrypoint": "app/index.html",
+  "next_action_when_original_available": "compare original V26-V27 against recovery build before replacing any preserved behavior"
+}
