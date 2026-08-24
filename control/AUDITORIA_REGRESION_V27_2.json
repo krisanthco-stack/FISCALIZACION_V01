@@ -1,0 +1,92 @@
+{
+  "version": "27.2.0-FINAL",
+  "baseline": {
+    "file": "index.html entregado por el usuario",
+    "sha256": "015b046e11b0c3e6dc1d9b599df9f40695c260b727d4531dda35b1b9d82e533f",
+    "app_version": "27.0.0-FINAL"
+  },
+  "previous_release": {
+    "file": "V27.1 Oficios",
+    "sha256": "2a92752ad5ff8666d842a955c24b76c302fc80bd80d9d26b2b9127ba2c3aeaf8",
+    "app_version": "27.1.0-FINAL"
+  },
+  "final": {
+    "file": "index.html",
+    "sha256": "3f5b7dd76fecb4570615a160cfe1ce3235505fc0988b27a44a675c15a65c7908",
+    "app_version": "27.2.0-FINAL"
+  },
+  "regression_audit": {
+    "baseline_ids": 161,
+    "final_ids": 176,
+    "removed_ids": [],
+    "added_ids": [
+      "rectificationAssignNumberBtn",
+      "rectificationCaseDbI",
+      "rectificationCaseDistrict",
+      "rectificationCaseFinca",
+      "rectificationCaseOwner",
+      "rectificationDocxBtn",
+      "rectificationEligibility",
+      "rectificationInlinePreview",
+      "rectificationIssueMeta",
+      "rectificationOfficeNumber",
+      "rectificationOutput",
+      "rectificationPreviewAccordion",
+      "rectificationPreviewBtn",
+      "rectificationPrintBtn",
+      "rectificationSuggestBtn"
+    ],
+    "baseline_named_functions": 314,
+    "final_named_functions": 330,
+    "removed_functions": [],
+    "added_functions": [
+      "applyRectificationSuggestions",
+      "assignRectificationNumber",
+      "downloadRectificationDocx",
+      "formatRectificationDate",
+      "makeRectificationDocx",
+      "printRectification",
+      "rectificationFileName",
+      "rectificationPreviewHtml",
+      "rectificationState",
+      "rectificationSuggestions",
+      "rectificationTokens",
+      "rectificationValidation",
+      "refreshRectificationOutput",
+      "reportResolutionState",
+      "showRectificationPreview",
+      "syncRectificationFromCase"
+    ],
+    "horizontal_navigation_preserved": true,
+    "accordion_behaviors_preserved": true,
+    "management_json_preserved": true,
+    "rectification_output_preserved": true,
+    "duplicate_ids": false
+  },
+  "fiscal_report_fix": {
+    "cause": "La Salida 1 conservaba buildReportHtml/makeDocx del informe anterior y la caché PWA continuaba en V27.1.",
+    "official_template": "Informe_Fiscalizacion_V01_MACHOTE_FINAL.docx",
+    "preview_updated": true,
+    "docx_updated": true,
+    "old_report_labels_removed": true,
+    "result_mapping": {
+      "nonconforming": "RECTIFICAR",
+      "conforming": "CONFORME",
+      "incomplete": "PENDIENTE"
+    },
+    "pwa_cache": "fiscalizacion-bi-v27-2-0-final",
+    "app_ui_palette_changed": false,
+    "report_document_colors": "Se aplican los colores del machote final únicamente dentro del documento generado."
+  },
+  "authorized_changes": [
+    "Corregir únicamente la Salida 1 Informe Técnico + Resolución para usar el machote final aprobado.",
+    "Mantener la Salida 2 Solicitud de Rectificación MS_FBI_RD ya incorporada.",
+    "Preservar navegación horizontal, acordeones MD(9), Gestión/JSON/ZIP, IndexedDB y auditoría.",
+    "Incrementar la caché del Service Worker para evitar que se siga mostrando el informe anterior."
+  ],
+  "verification": {
+    "regression_tests": "15/15 PASS",
+    "javascript_syntax": "node --check PASS",
+    "browser_automation": "NO APROBADA: Chromium no finalizó en este entorno; no se utiliza como evidencia de aprobación."
+  }
+}

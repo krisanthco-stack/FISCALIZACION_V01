@@ -1,0 +1,7 @@
+PRUEBA DE ESTRÉS PDF — V27.3 FINAL
+
+Escenario: 7 defectos simultáneos + textos largos + firma PNG.
+Informe Técnico + Resolución: 0 tablas/celdas con overflow; firma dentro de tabla; 6 páginas en el caso extremo.
+Rectificación: 0 tablas/celdas con overflow; firma dentro de tabla; 2 páginas en el caso extremo.
+Los bloques críticos se desplazan a la página siguiente cuando no caben, sin superposición ni recorte.
+Prueba visual: PDFs renderizados a PNG (140 dpi) y revisados en las páginas críticas.

@@ -1,0 +1,52 @@
+{
+  "version": "27.3.0-FINAL",
+  "tipo": "Auditoría de estrés de maquetación PDF y regresión",
+  "base": "V27.2 derivada del index.html V27 funcional suministrado por el usuario; no se modifica la arquitectura ni los módulos existentes.",
+  "objetivo": [
+    "Verificar que varios defectos simultáneos no desborden las tablas.",
+    "Verificar que textos largos aumenten la altura de las filas sin superposición.",
+    "Verificar que los bloques críticos se desplacen completos a la página siguiente cuando no caben.",
+    "Verificar que las firmas permanezcan dentro de celdas reales de tabla al imprimir o guardar PDF."
+  ],
+  "escenario_de_estres": {
+    "criterios_defectuosos_simultaneos": 7,
+    "componentes": "Terreno; tipología constructiva; área constructiva; cantidad de construcciones; valor de construcciones; actividad agropecuaria; área agropecuaria.",
+    "motivos_rectificacion": "Dos filas con textos extensos de aproximadamente 590 caracteres cada una.",
+    "otros_datos": "Nombres, dirección fiscal, dirección del inmueble, observaciones y cargos extensos; firma PNG real generada en canvas.",
+    "motor_pdf": "Chromium headless, tamaño Carta, print_background activo.",
+    "revision_visual": "PDF renderizado a PNG a 140 dpi y revisado en las páginas críticas."
+  },
+  "hallazgos_pre_correccion": [
+    "La firma del oficio de rectificación estaba fuera de una tabla y podía quedar huérfana en una página separada.",
+    "El bloque de objeto de rechazo podía fragmentarse cuando el contenido crecía.",
+    "La firma de la resolución era un bloque visual lateral, no una celda real de tabla.",
+    "La justificación de la resolución podía dividirse de forma incómoda entre páginas con contenido extremo."
+  ],
+  "correcciones_aplicadas": [
+    "Tablas de informe y rectificación con table-layout: fixed y ajuste de palabras dentro de celda.",
+    "Filas críticas con break-inside/page-break-inside para evitar particiones inadecuadas.",
+    "Objeto de rechazo, nota y firma del oficio agrupados en un bloque que se mueve como unidad cuando no cabe.",
+    "Firma del oficio convertida en celda real de tabla con imagen contenida.",
+    "Responsable y firma de la resolución convertidos en una tabla real; la firma ocupa una celda con rowspan.",
+    "Justificación configurada para desplazarse como unidad cuando no cabe en el espacio restante."
+  ],
+  "resultado_final": {
+    "errores_javascript_en_prueba": 0,
+    "tablas_informe_con_overflow_horizontal": 0,
+    "celdas_informe_con_overflow": 0,
+    "firma_resolucion_dentro_de_tabla": true,
+    "imagen_firma_resolucion_contenida_en_celda": true,
+    "ancho_documento_informe": "816/816 px; sin scroll horizontal",
+    "paginas_informe_en_estres": 6,
+    "tablas_rectificacion_con_overflow_horizontal": 0,
+    "celdas_rectificacion_con_overflow": 0,
+    "firma_rectificacion_dentro_de_tabla": true,
+    "imagen_firma_rectificacion_contenida_en_celda": true,
+    "ancho_documento_rectificacion": "816/816 px; sin scroll horizontal",
+    "paginas_rectificacion_en_estres": 2,
+    "superposiciones_visuales_detectadas": 0,
+    "recortes_visuales_detectados": 0
+  },
+  "criterio_de_aceptacion": "APROBADO: bajo el escenario de estrés, los contenidos crecen o saltan de página sin salir de las tablas ni superponerse, y ambas firmas permanecen dentro de sus tablas en PDF.",
+  "nota": "La prueba usa textos deliberadamente extensos. Si una cadena de prueba termina a mitad de palabra es porque el dato sintético fue recortado a una longitud fija, no por recorte del PDF."
+}

@@ -1,0 +1,13 @@
+Fiscalización B.I. V27.3 FINAL
+Municipalidad de Sarapiquí
+
+Base: V27 funcional suministrada por el usuario.
+Cambios puntuales incorporados:
+- INFORMES conserva la salida Informe Técnico + Resolución y la salida Solicitud de Rectificación MS_FBI_RD.
+- El Informe Técnico + Resolución fue actualizado al machote final aprobado: encabezado institucional azul, Fecha de Declaración, secciones oficiales, Resultado del Análisis Técnico, Justificación y Responsable de la Resolución Administrativa.
+- Se conserva navegación horizontal V27, acordeones MD(9), Gestión, JSON/ZIP, IndexedDB y auditoría.
+- Se incrementó la caché del Service Worker a V27.3 para impedir que el navegador siga mostrando el informe anterior.
+
+Abra index.html. Si la aplicación estaba instalada, pulse Actualizar para activar la nueva caché.
+
+- V27.3: control de estrés de PDF: filas extensas, múltiples defectos, firma contenida y bloques críticos sin superposición.
