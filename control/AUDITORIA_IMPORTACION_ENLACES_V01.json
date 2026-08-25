@@ -1,0 +1,20 @@
+{
+  "release": "V01_IMPORTACION_ENLACES",
+  "date": "2026-08-25",
+  "base": "FISCALIZACION_V01-main/index.html",
+  "scope": [
+    "Importación XLSX/CSV con encabezado dinámico",
+    "Identidad por folio, plano y derecho",
+    "Fechas e identificaciones preservadas",
+    "Enlaces detectados en cualquier columna",
+    "Controles compactos Abrir, Leer y Adjuntar",
+    "PDF e imágenes vinculados por expediente",
+    "Lectura web de mejor esfuerzo y selección de campos"
+  ],
+  "duplicate_rule": "Un folio se conserva una vez salvo diferencia real de plano o derecho. Los campos vacíos se completan sin crear duplicado.",
+  "official_templates": {
+    "templates/final/Informe_Fiscalizacion_V01_MACHOTE_FINAL.docx": "81214b02982f2dd03f575375967df7e2e6279e2612de3bd5101e51acb362d7b7",
+    "templates/final/MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420"
+  },
+  "template_policy": "Los machotes finales oficiales no fueron modificados."
+}

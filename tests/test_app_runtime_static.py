@@ -39,5 +39,6 @@ def test_root_entrypoints_exist_and_are_full_app():
         p=ROOT/name
         assert p.exists()
         text=p.read_text(encoding='utf-8')
-        assert 'GESTIÓN' in text and 'INFORMES' in text and 'AUDITORÍA' in text
-        assert 'app/assets/jszip.min.js' in text
+        assert 'Gestión' in text and 'Informes' in text and 'Auditoría' in text
+        assert len(text)>1_000_000
+        assert 'app/assets/import_rules.js' in text

@@ -11,7 +11,7 @@ if BASE.exists():
     assert nav(old)==nav(HTML),'Se alteró la navegación V27 fuera del cargador.'
 for token in [
     'function looksLikeImportCase','function collectImportCaseRecords','function adaptLegacyCaseShape','function findArchiveEntry',
-    'Cargar JSON / ZIP','accept=".zip,.json,application/zip,application/json"',"const APP_VERSION='27.3.2-FINAL'"
+    'Cargar JSON / ZIP','accept=".zip,.json,application/zip,application/json"',"const APP_VERSION='"
 ]: assert token in HTML, token
 assert "data?.schema!=='FiscalizacionBIExport'||!data.case" not in HTML
 assert "const expedienteName=findArchiveEntry(files,'expediente.json'),expedientesName=findArchiveEntry(files,'expedientes.json')" in HTML

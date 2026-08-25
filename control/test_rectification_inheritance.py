@@ -5,13 +5,14 @@ ROOT=Path(__file__).resolve().parents[1]
 html=(ROOT/'index.html').read_text(encoding='utf-8')
 
 for field_id,label in [
-    ('rectificationReportTramite','Trámite/DBI'),
-    ('rectificationReportOwner','Propietario'),
-    ('rectificationReportOwnerId','Identificación'),
-    ('rectificationReportFinca','Finca'),
-    ('rectificationReportPlano','Plano'),
+    ('rectificationDataTramite','Trámite/DBI'),
+    ('rectificationDataOwner','Propietario'),
+    ('rectificationDataOwnerId','Identificación'),
+    ('rectificationDataFinca','Finca'),
+    ('rectificationDataPlano','Plano'),
 ]:
-    assert re.search(rf'<input[^>]+id="{field_id}"[^>]+readonly',html),f'{label} no está como dato heredado de solo lectura'
+    tag=re.search(rf'<input[^>]+id="{field_id}"[^>]*>',html)
+    assert tag and 'readonly' in tag.group(0),f'{label} no está como dato heredado de solo lectura'
 
 sync=re.search(r'function syncRectificationFromCase\(c=state\.current\)\{(.*?)\n\}',html,re.S)
 assert sync,'No se encontró syncRectificationFromCase'
@@ -27,8 +28,8 @@ for forbidden in [
 
 assert "r.dbi=String(c.general?.tramite||'').trim()" in body
 assert "'«DBI»':c.general?.tramite||''" in html
-assert "['consecutivo DBI',c.general?.tramite]" in html
-assert '<tr><td>${val(c.general?.tramite)}</td><td>${val(c.general?.finca)}</td>' in html
+assert "wordSetCellText(doc,3,1,0,c.general?.tramite" in html
+assert "${field('dbi',c.general?.tramite,true)}${field('finca',c.general?.finca,true)}" in html
 
 # Campos no presentes en Informe: deben seguir enlazados a rectification y sin readonly.
 for path in [
