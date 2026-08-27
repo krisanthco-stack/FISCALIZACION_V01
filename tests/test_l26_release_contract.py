@@ -92,8 +92,10 @@ def test_agro_water_and_street_level_controls_have_expected_choices_and_dynamic_
     assert '<option value="Sí">Sí</option>' in HTML and '<option value="No">No</option>' in HTML
     assert 'id="terrainAgroActivityField"' in HTML
     assert 'id="waterAffectedSelect"' in HTML
-    for value in ['No','Afectado','Colinda con']:
+    for value in ['No','Afectado']:
         assert f'<option value="{value}">{value}</option>' in HTML
+    select=HTML.split('id="waterAffectedSelect"',1)[1].split('</select>',1)[0]
+    assert 'Colinda con' not in select
     assert 'id="waterDetails"' in HTML
     assert 'id="streetLevelSelect"' in HTML
     for value in ['1','0','-1']:

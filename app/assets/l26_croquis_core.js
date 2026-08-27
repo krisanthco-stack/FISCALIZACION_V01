@@ -29,5 +29,15 @@
     const off=Math.max(8,n(offset)||22),da={x:ax+nx*off,y:ay+ny*off},db={x:bx+nx*off,y:by+ny*off};
     return{a:da,b:db,normal:{x:nx,y:ny},label:{x:Math.max(8,Math.min(n(W)-8,(da.x+db.x)/2)),y:Math.max(14,Math.min(n(H)-14,(da.y+db.y)/2))}};
   }
-  return{normalizeFactor,adjustedArea,centroid,rotate90,translateWithinBounds,dimensionGeometry};
+  function numberedPolygonLabel(index,name){
+    const number=Math.max(1,Math.floor(Number(index)||0)+1),label=String(name||'').trim()||`Polígono ${number}`;
+    return `${number}-${label}`;
+  }
+  function polygonLabelAnchor(points,index,W,H,pad=18){
+    const pts=Array.isArray(points)?points:[],width=Math.max(1,n(W)),height=Math.max(1,n(H)),margin=Math.max(8,n(pad)||18);
+    if(!pts.length)return{x:margin,y:margin,align:'left'};
+    const xs=pts.map(p=>n(p.x)),ys=pts.map(p=>n(p.y)),left=Number(index)%2===0;
+    return{x:Math.max(margin,Math.min(width-margin,left?Math.min(...xs):Math.max(...xs))),y:Math.max(margin,Math.min(height-margin,Math.min(...ys)-margin)),align:left?'left':'right'};
+  }
+  return{normalizeFactor,adjustedArea,centroid,rotate90,translateWithinBounds,dimensionGeometry,numberedPolygonLabel,polygonLabelAnchor};
 });

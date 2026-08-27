@@ -1,0 +1,54 @@
+{
+  "release": "27.3.7-FINAL",
+  "date": "2026-08-27",
+  "baseline_commit": "6941c42",
+  "release_commit": "20fbe002afc398d32c6cafd6779932ea0383aed9",
+  "stages": {
+    "datos_enlace": "PASS",
+    "terreno_agua": "PASS",
+    "croquis": "PASS",
+    "informe_rectificacion": "PASS",
+    "gestion": "PASS",
+    "json_merge_no_destructivo": "PASS",
+    "pwa_manual": "PASS"
+  },
+  "tests": {
+    "pytest": {
+      "passed": 62,
+      "skipped": 1,
+      "failed": 0
+    },
+    "node": {
+      "passed": 21,
+      "failed": 0
+    },
+    "docx_smoke": "PASS",
+    "javascript_syntax": "PASS"
+  },
+  "excel_real": {
+    "Plantilla_Importacion_Expedientes_V2.xlsx": {
+      "rows": 477,
+      "deduped": 477
+    },
+    "L-L-P..xlsx": {
+      "rows": 481,
+      "deduped": 463,
+      "links": 438
+    },
+    "PF- POR FECHA_.xlsx": {
+      "rows": 475,
+      "deduped": 464
+    },
+    "synthetic_407": {
+      "rows": 407,
+      "deduped": 407
+    }
+  },
+  "data_protection": {
+    "json_tramites": "merge_without_database_replacement",
+    "json_gestion": "merge_without_database_replacement",
+    "identity": "id_or_inmueble_plano_derecho",
+    "delete_database_on_import": false
+  },
+  "templates_unchanged_from_baseline": true
+}

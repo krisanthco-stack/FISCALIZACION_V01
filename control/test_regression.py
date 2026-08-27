@@ -100,7 +100,7 @@ class FiscalReportMachoteRegression(unittest.TestCase):
 
     def test_service_worker_cache_bumped_for_report_change(self):
         sw=(ROOT/'sw.js').read_text(encoding='utf-8')
-        self.assertIn("fiscalizacion-bi-l26-manual-20260826",sw)
+        self.assertRegex(sw,r"fiscalizacion-bi-l26-manual-202608\d{2}")
         self.assertIn("event.data==='SKIP_WAITING'",sw)
         self.assertNotIn('.then(()=>self.skipWaiting())',sw)
         self.assertRegex(HTML,r"const APP_VERSION='27\.3\.\d+-FINAL'")

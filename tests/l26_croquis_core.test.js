@@ -39,3 +39,14 @@ test('cota usa offset normal y línea de dimensión separada del lado',()=>{
   assert.ok(Math.abs(d.a.y-100)>=23.9);
   assert.ok(d.label.x>=0&&d.label.x<=900&&d.label.y>=0&&d.label.y<=520);
 });
+
+test('etiqueta de polígono enlaza número y nombre y alterna esquina',()=>{
+  assert.equal(core.numberedPolygonLabel(0,'Casa'),'1-Casa');
+  assert.equal(core.numberedPolygonLabel(1,'Cochera'),'2-Cochera');
+  const pts=[{x:100,y:100},{x:300,y:100},{x:300,y:250},{x:100,y:250}];
+  const left=core.polygonLabelAnchor(pts,0,900,520);
+  const right=core.polygonLabelAnchor(pts,1,900,520);
+  assert.equal(left.align,'left');
+  assert.equal(right.align,'right');
+  assert.ok(left.x<right.x);
+});
