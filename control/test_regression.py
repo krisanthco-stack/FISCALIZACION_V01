@@ -45,17 +45,20 @@ class RectificationFeature(unittest.TestCase):
     def test_rectification_generator_uses_official_template(self):
         self.assertIn('RECTIFICATION_TEMPLATE_BASE64',HTML)
         self.assertIn('makeRectificationDocx',HTML)
-        self.assertIn('MS_FBI_RD_MACHOTE_APLICACION_V27_EXACTO.docx',HTML)
+        self.assertIn("const RECTIFICATION_TEMPLATE_NAME='MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx'",HTML)
+        self.assertIn('wordSetCellText',HTML)
+        self.assertIn('wordReplaceExact',HTML)
 
-    def test_embedded_template_is_valid_and_tokenized(self):
+    def test_embedded_template_is_valid_official_structure_for_direct_cell_filling(self):
         m=re.search(r"const RECTIFICATION_TEMPLATE_BASE64='([^']+)'",HTML)
         self.assertIsNotNone(m)
         raw=base64.b64decode(m.group(1))
         with zipfile.ZipFile(io.BytesIO(raw)) as z:
             self.assertIn('word/document.xml',z.namelist())
-            xml=''.join(z.read(n).decode('utf-8','ignore') for n in z.namelist() if n.endswith('.xml'))
-            for token in ['«OFICIO»','«FECHA_OFICIO»','«NOMBRE»','«CEDULA»','«FINCA»','«OBJETO_1»','«MOTIVO_1»']:
-                self.assertIn(token,xml)
+            self.assertIn('word/header1.xml',z.namelist())
+            self.assertIn(b'<w:tbl',z.read('word/document.xml'))
+        self.assertIn('wordSetCellText',HTML)
+        self.assertIn('wordReplaceExact',HTML)
 
 
     def test_embedded_template_preserves_official_assets(self):
@@ -97,7 +100,9 @@ class FiscalReportMachoteRegression(unittest.TestCase):
 
     def test_service_worker_cache_bumped_for_report_change(self):
         sw=(ROOT/'sw.js').read_text(encoding='utf-8')
-        self.assertIn("fiscalizacion-bi-v27-3-2-import-compat",sw)
+        self.assertIn("fiscalizacion-bi-l26-manual-20260826",sw)
+        self.assertIn("event.data==='SKIP_WAITING'",sw)
+        self.assertNotIn('.then(()=>self.skipWaiting())',sw)
         self.assertRegex(HTML,r"const APP_VERSION='27\.3\.\d+-FINAL'")
 
     def test_docx_uses_final_fiscal_report_machote_labels(self):

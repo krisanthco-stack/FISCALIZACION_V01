@@ -24,7 +24,8 @@ class PortablePackageTests(unittest.TestCase):
         self.assertEqual(descriptor['repository_type'], 'application_and_control_repository')
         self.assertFalse(descriptor['application_baseline_present'])
         self.assertTrue(descriptor['application_executable_present'])
-        self.assertEqual(descriptor['application_entrypoint'], 'app/index.html')
+        self.assertEqual(descriptor['application_entrypoint'], 'index.html')
+        self.assertEqual(descriptor['compatibility_entrypoint'], 'app/index.html')
         self.assertEqual(descriptor['module_name'], 'INFORMES')
 
     def test_portable_zip_has_single_root_and_no_transient_files(self):

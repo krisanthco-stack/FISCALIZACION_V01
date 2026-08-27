@@ -4,29 +4,28 @@ ROOT=Path(__file__).resolve().parents[1]
 HTML=(ROOT/'index.html').read_text(encoding='utf-8')
 
 class PdfLayoutStressRegression(unittest.TestCase):
-    def test_rectification_signature_is_inside_table(self):
+    def _rect(self):
         start=HTML.index('function rectificationPreviewHtml')
         end=HTML.index('function showRectificationPreview',start)
-        block=HTML[start:end]
-        self.assertIn('rectification-signature-table',block)
-        self.assertIn('rectification-signature-cell',block)
-        self.assertNotIn('<div class="sign">',block)
+        return HTML[start:end]
 
-    def test_rectification_tables_wrap_and_rows_avoid_splitting(self):
-        start=HTML.index('function rectificationPreviewHtml')
-        end=HTML.index('function showRectificationPreview',start)
-        block=HTML[start:end]
-        self.assertIn('table-layout:fixed',block)
+    def test_rectification_uses_fixed_official_letter_page(self):
+        block=self._rect()
+        self.assertIn('.rect-original-page{position:relative;width:215.9mm;height:279.4mm',block)
+        self.assertIn('overflow:hidden',block)
+        self.assertIn('background:#fff url(${RECTIFICATION_BLANK_PAGE_DATA})',block)
+
+    def test_rectification_fields_wrap_inside_fixed_positions(self):
+        block=self._rect()
         self.assertIn('overflow-wrap:anywhere',block)
-        self.assertIn('break-inside:avoid',block)
+        self.assertIn('.rf{position:absolute',block)
+        self.assertIn('data-pdf-editable="true"',block)
 
-
-    def test_rectification_rejection_block_moves_as_unit(self):
-        start=HTML.index('function rectificationPreviewHtml')
-        end=HTML.index('function showRectificationPreview',start)
-        block=HTML[start:end]
-        self.assertIn('rectification-rejection-block',block)
-        self.assertRegex(block,r'\.rectification-rejection-block\{[^}]*break-inside:avoid-page')
+    def test_rectification_signature_entries_stay_on_same_official_page(self):
+        block=self._rect()
+        for token in ['perito-entry','notifier-entry','notifier-signature-entry','recipient-signature-entry']:
+            self.assertIn(token,block)
+        self.assertIn('@page{size:Letter;margin:0}',block)
 
     def test_resolution_signature_block_moves_as_unit(self):
         start=HTML.index('async function buildReportHtml')

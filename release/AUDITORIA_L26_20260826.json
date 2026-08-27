@@ -1,0 +1,160 @@
+{
+  "release": "L26-2026-08-26",
+  "source_archive": "FISCALIZACION_V01-main (1)(1).zip",
+  "verification": {
+    "python_pytest": {
+      "passed": 51,
+      "skipped": 1,
+      "failed": 0
+    },
+    "node_import_rules": {
+      "passed": 12,
+      "failed": 0
+    },
+    "node_croquis": {
+      "passed": 4,
+      "failed": 0
+    },
+    "node_excel_real_files": {
+      "passed": 4,
+      "failed": 0
+    },
+    "release_contract": {
+      "passed": 13,
+      "failed": 0
+    },
+    "javascript_syntax": {
+      "status": "PASS",
+      "inline_scripts_checked": 2
+    },
+    "canonical_entrypoint_sync": "PASS"
+  },
+  "excel_real_files": {
+    "Plantilla_Importacion_Expedientes_V2.xlsx": {
+      "rows": 477,
+      "after_true_duplicate_rule": 477,
+      "header_row_index": 0
+    },
+    "L-L-P..xlsx": {
+      "rows": 481,
+      "after_true_duplicate_rule": 463,
+      "hyperlinks": 438
+    },
+    "PF- POR FECHA_.xlsx": {
+      "sheet": "DECLARACIONES A FISCALIZAR",
+      "header_row_index": 1,
+      "rows": 475,
+      "after_true_duplicate_rule": 464
+    },
+    "synthetic_407_same_tramite_distinct_property_plan_right": {
+      "rows": 407,
+      "after_true_duplicate_rule": 407
+    }
+  },
+  "requirements_verified": [
+    "Gestión muestra únicamente expedientes fiscalizados o legados realmente finalizados.",
+    "Estados: Aceptar/Aprobado azul, Objetar rojo, Para revisión campo amarillo.",
+    "Fiscalización incluye Con visita a campo / Sin visita a campo.",
+    "Uso agro despliega detalle únicamente con Sí; cuerpo de agua distingue No/Afectado/Colinda con.",
+    "Sobre/Bajo nivel permiten editar diferencia y mantienen compatibilidad 1/0/-1.",
+    "Informe separado en tres módulos; Rectificación solo al Objetar.",
+    "Resolución Administrativa inicia en hoja aparte.",
+    "Observaciones vacías se omiten del informe HTML/PDF y DOCX.",
+    "Nombres: TRAMITE_AC-AÑO, TRAMITE_OB-AÑO y MS_RECT_TRAMITE.",
+    "Auditoría permite navegar al módulo/campo, expandir, enfocar, resaltar y reauditar.",
+    "Gestión reutiliza el componente visual de filtros de Trámites.",
+    "Gestión permite PDF informe, Solicitud de rectificar cuando aplica y Abrir link cuando existe.",
+    "Excel multihoja/encabezados variables/hipervínculos/distrito/lugar y duplicado por inmueble-plano-derecho.",
+    "Croquis: nombre, x2/x1/2, vértices, rotación, mover/ubicar, escala común, cotas separadas y trazabilidad.",
+    "Recuperación consulta bases IndexedDB anteriores sin deleteDatabase.",
+    "PWA instalable; actualización de versión se activa manualmente con el botón Actualizar."
+  ],
+  "templates": {
+    "count": 10,
+    "all_unchanged": true,
+    "items": [
+      {
+        "path": "templates/Informe_Fiscalizacion_V01_MACHOTE_FINAL.docx",
+        "sha256_base": "81214b02982f2dd03f575375967df7e2e6279e2612de3bd5101e51acb362d7b7",
+        "sha256_release": "81214b02982f2dd03f575375967df7e2e6279e2612de3bd5101e51acb362d7b7",
+        "unchanged": true
+      },
+      {
+        "path": "templates/MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx",
+        "sha256_base": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+        "sha256_release": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+        "unchanged": true
+      },
+      {
+        "path": "templates/MS_FBI_RD_MACHOTE_APLICACION_V27_EXACTO.docx",
+        "sha256_base": "4246c9aa11b74a32a59e6048314ec827cfada55f8fd8fe035023ef20a00a1a22",
+        "sha256_release": "4246c9aa11b74a32a59e6048314ec827cfada55f8fd8fe035023ef20a00a1a22",
+        "unchanged": true
+      },
+      {
+        "path": "templates/final/Informe_Fiscalizacion_V01_MACHOTE_FINAL.docx",
+        "sha256_base": "81214b02982f2dd03f575375967df7e2e6279e2612de3bd5101e51acb362d7b7",
+        "sha256_release": "81214b02982f2dd03f575375967df7e2e6279e2612de3bd5101e51acb362d7b7",
+        "unchanged": true
+      },
+      {
+        "path": "templates/final/MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx",
+        "sha256_base": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+        "sha256_release": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+        "unchanged": true
+      },
+      {
+        "path": "templates/originales/MACHOTE_APROBACION-F.docx",
+        "sha256_base": "0a598478b0a9585cd0a2327f0205a1ff8fabb098d86fcd7a8f76b2c989b9ac7a",
+        "sha256_release": "0a598478b0a9585cd0a2327f0205a1ff8fabb098d86fcd7a8f76b2c989b9ac7a",
+        "unchanged": true
+      },
+      {
+        "path": "templates/originales/MACHOTE_RECHAZO.docx",
+        "sha256_base": "7be4b0a3e129826e103ca6f8e3f0f80142d10a82d1379786b364f71b00e07e82",
+        "sha256_release": "7be4b0a3e129826e103ca6f8e3f0f80142d10a82d1379786b364f71b00e07e82",
+        "unchanged": true
+      },
+      {
+        "path": "templates/originales/MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx",
+        "sha256_base": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+        "sha256_release": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+        "unchanged": true
+      },
+      {
+        "path": "templates/parametrized/Informe_Fiscalizacion_APLICACION_V1.docx",
+        "sha256_base": "03d3f69dd50b9ddd16dfff75c7b437def87c0d031c4edf442abf9d7d4772d31a",
+        "sha256_release": "03d3f69dd50b9ddd16dfff75c7b437def87c0d031c4edf442abf9d7d4772d31a",
+        "unchanged": true
+      },
+      {
+        "path": "templates/parametrized/MS_FBI_RD_MACHOTE_APLICACION_V1.docx",
+        "sha256_base": "88fa3cde79b60da6bf311a7f7417e287c9b8489447e8356779bbc2d5350d064a",
+        "sha256_release": "88fa3cde79b60da6bf311a7f7417e287c9b8489447e8356779bbc2d5350d064a",
+        "unchanged": true
+      }
+    ]
+  },
+  "repository_diff": {
+    "modified": [
+      "Fiscalizacion_BI_V27_FINAL.html",
+      "REPOSITORY_DESCRIPTOR.json",
+      "app/index.html",
+      "control/test_pdf_layout.py",
+      "control/test_regression.py",
+      "index.html",
+      "scripts/sync_entrypoints.py",
+      "sw.js",
+      "tests/test_final_app.py",
+      "tests/test_portable_package.py"
+    ],
+    "new": [
+      "app/assets/l26_croquis_core.js",
+      "app/assets/l26_excel_import_core.js",
+      "tests/l26_croquis_core.test.js",
+      "tests/l26_excel_real_files.test.js",
+      "tests/test_l26_release_contract.py"
+    ],
+    "deleted": []
+  }
+}

@@ -9,11 +9,13 @@
     "INFORME TÉCNICO + RESOLUCIÓN",
     "SOLICITUD DE RECTIFICACIÓN MS_FBI_RD"
   ],
-  "load_note": "Paquete ejecutable y de control. Abrir index.html; app/index.html contiene la aplicación offline. application_baseline_present=false significa únicamente que los bytes originales V26-V27 no estaban disponibles para comparación literal.",
+  "load_note": "Paquete ejecutable y de control. Abrir index.html. app/index.html es un acceso de compatibilidad que redirige al único punto de entrada canónico para evitar cargar una versión antigua.",
   "portable_archive_requirement": "single_root_directory",
-  "application_entrypoint": "app/index.html",
+  "application_entrypoint": "index.html",
   "portable_entrypoint": "index.html",
   "application_executable_present": true,
-  "application_mode": "offline_browser_recovery_from_accessible_v26_v27_contract",
-  "notes": "Executable recovery build created from the accessible V26-V27 functional contract and approved masters. Original V26-V27 source bytes were not present."
+  "application_mode": "offline_pwa_with_manual_update_and_legacy_data_recovery",
+  "notes": "Executable recovery build created from the accessible V26-V27 functional contract and approved masters. Original V26-V27 source bytes were not present.",
+  "canonical_entrypoint": "index.html",
+  "compatibility_entrypoint": "app/index.html"
 }
