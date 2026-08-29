@@ -124,3 +124,12 @@ test('el expediente abierto muestra el enlace importado y permite abrirlo', () =
   assert.match(html, /id="caseSourceLink"/);
   assert.match(html, /id="openCaseSourceBtn"/);
 });
+
+test('detectFields reconoce ubicación administrativa y tipo de trámite en texto PDF',()=>{
+  const detected=rules.detectFields('Tipo de trámite: Fiscalización Provincia: Heredia Cantón: Sarapiquí Distrito: Puerto Viejo Lugar: La Virgen');
+  assert.equal(detected.processType,'Fiscalización');
+  assert.equal(detected.province,'Heredia');
+  assert.equal(detected.canton,'Sarapiquí');
+  assert.equal(detected.district,'Puerto Viejo');
+  assert.equal(detected.locality,'La Virgen');
+});

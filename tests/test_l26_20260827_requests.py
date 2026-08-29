@@ -50,14 +50,16 @@ def test_croquis_move_is_not_relaid_out_after_pointer_up():
 
 def test_croquis_number_and_name_labels_and_no_perimeter_output():
     draw=function_block('drawCompoundSketch','manualSketchHtml')
-    assert 'numberedPolygonLabel' in draw
-    assert 'polygonLabelAnchor' in draw
+    assert 'croquisDrawingRect' in draw
+    assert 'polygonLegendLayout' in HTML
+    assert 'legend.items.forEach' in draw
+    assert 'polygonLabelAnchor' not in draw
     assert 'ctx.fillText(String(pi+1)' in draw
     assert 'Perímetro de control' not in HTML
     assert ' · perímetro ' not in draw
     assert ' · Perímetro de control:' not in HTML
-    assert 'function numberedPolygonLabel' in CORE
-    assert 'function polygonLabelAnchor' in CORE
+    assert 'function polygonLegendLayout' in CORE
+    assert 'function projectMetricPolygonsCommonScale' in CORE
 
 
 def test_signature_heading_word_is_removed_from_generated_report():
