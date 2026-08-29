@@ -1,0 +1,70 @@
+{
+  "release": "27.3.8-FINAL",
+  "date": "2026-08-29",
+  "changes": {
+    "pagination_page_size": 25,
+    "accordion_state_persisted": true,
+    "default_source_url": "https://metro.sarapiqui.go.cr/",
+    "croquis_manual_position_persisted": true,
+    "pwa_update_mode": "manual"
+  },
+  "verification": {
+    "python": "67 passed, 1 skipped",
+    "node": "21 passed",
+    "docx_smoke": "PASS",
+    "javascript_syntax": "PASS"
+  },
+  "templates": {
+    "templates/Informe_Fiscalizacion_V01_MACHOTE_FINAL.docx": {
+      "baseline": "81214b02982f2dd03f575375967df7e2e6279e2612de3bd5101e51acb362d7b7",
+      "current": "81214b02982f2dd03f575375967df7e2e6279e2612de3bd5101e51acb362d7b7",
+      "identical": true
+    },
+    "templates/MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx": {
+      "baseline": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+      "current": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+      "identical": true
+    },
+    "templates/MS_FBI_RD_MACHOTE_APLICACION_V27_EXACTO.docx": {
+      "baseline": "4246c9aa11b74a32a59e6048314ec827cfada55f8fd8fe035023ef20a00a1a22",
+      "current": "4246c9aa11b74a32a59e6048314ec827cfada55f8fd8fe035023ef20a00a1a22",
+      "identical": true
+    },
+    "templates/final/Informe_Fiscalizacion_V01_MACHOTE_FINAL.docx": {
+      "baseline": "81214b02982f2dd03f575375967df7e2e6279e2612de3bd5101e51acb362d7b7",
+      "current": "81214b02982f2dd03f575375967df7e2e6279e2612de3bd5101e51acb362d7b7",
+      "identical": true
+    },
+    "templates/final/MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx": {
+      "baseline": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+      "current": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+      "identical": true
+    },
+    "templates/originales/MACHOTE_APROBACION-F.docx": {
+      "baseline": "0a598478b0a9585cd0a2327f0205a1ff8fabb098d86fcd7a8f76b2c989b9ac7a",
+      "current": "0a598478b0a9585cd0a2327f0205a1ff8fabb098d86fcd7a8f76b2c989b9ac7a",
+      "identical": true
+    },
+    "templates/originales/MACHOTE_RECHAZO.docx": {
+      "baseline": "7be4b0a3e129826e103ca6f8e3f0f80142d10a82d1379786b364f71b00e07e82",
+      "current": "7be4b0a3e129826e103ca6f8e3f0f80142d10a82d1379786b364f71b00e07e82",
+      "identical": true
+    },
+    "templates/originales/MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx": {
+      "baseline": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+      "current": "8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420",
+      "identical": true
+    },
+    "templates/parametrized/Informe_Fiscalizacion_APLICACION_V1.docx": {
+      "baseline": "03d3f69dd50b9ddd16dfff75c7b437def87c0d031c4edf442abf9d7d4772d31a",
+      "current": "03d3f69dd50b9ddd16dfff75c7b437def87c0d031c4edf442abf9d7d4772d31a",
+      "identical": true
+    },
+    "templates/parametrized/MS_FBI_RD_MACHOTE_APLICACION_V1.docx": {
+      "baseline": "88fa3cde79b60da6bf311a7f7417e287c9b8489447e8356779bbc2d5350d064a",
+      "current": "88fa3cde79b60da6bf311a7f7417e287c9b8489447e8356779bbc2d5350d064a",
+      "identical": true
+    }
+  },
+  "templates_all_identical": true
+}

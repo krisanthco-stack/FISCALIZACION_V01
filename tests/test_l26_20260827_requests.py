@@ -122,9 +122,9 @@ def test_json_imports_merge_without_replacing_existing_database():
     assert 'sin borrar datos no vacíos' in management
 
 
-def test_release_version_and_manual_cache_are_bumped_for_20260827():
-    assert "const APP_VERSION='27.3.7-FINAL'" in HTML
+def test_release_version_and_manual_cache_remain_manual_after_new_release():
+    assert "const APP_VERSION='27.3.8-FINAL'" in HTML
     sw=(ROOT/'sw.js').read_text(encoding='utf-8')
-    assert "fiscalizacion-bi-l26-manual-20260827" in sw
+    assert "fiscalizacion-bi-l26-manual-20260829" in sw
     assert "event.data==='SKIP_WAITING'" in sw
     assert '.then(()=>self.skipWaiting())' not in sw
