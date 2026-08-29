@@ -39,5 +39,29 @@
     const xs=pts.map(p=>n(p.x)),ys=pts.map(p=>n(p.y)),left=Number(index)%2===0;
     return{x:Math.max(margin,Math.min(width-margin,left?Math.min(...xs):Math.max(...xs))),y:Math.max(margin,Math.min(height-margin,Math.min(...ys)-margin)),align:left?'left':'right'};
   }
-  return{normalizeFactor,adjustedArea,centroid,rotate90,translateWithinBounds,dimensionGeometry,numberedPolygonLabel,polygonLabelAnchor};
+  function projectMetricPolygonsCommonScale(polygons,bounds={}){
+    const items=(Array.isArray(polygons)?polygons:[]).map(item=>{
+      const pts=(Array.isArray(item?.metricPoints)?item.metricPoints:[]).map((p,i)=>({...p,x:n(p.x),y:n(p.y),label:p?.label||`V${i+1}`}));
+      const sourceCenter=centroid(pts),target=item?.center&&Number.isFinite(Number(item.center.x))&&Number.isFinite(Number(item.center.y))?{x:Number(item.center.x),y:Number(item.center.y)}:{x:.5,y:.5};
+      if(!pts.length)return{pts,sourceCenter,target,extents:{left:0,right:0,top:0,bottom:0}};
+      const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);
+      return{pts,sourceCenter,target,extents:{left:sourceCenter.x-Math.min(...xs),right:Math.max(...xs)-sourceCenter.x,top:sourceCenter.y-Math.min(...ys),bottom:Math.max(...ys)-sourceCenter.y}};
+    });
+    const minX=Number.isFinite(Number(bounds.minX))?Number(bounds.minX):.04,maxX=Number.isFinite(Number(bounds.maxX))?Number(bounds.maxX):.96,minY=Number.isFinite(Number(bounds.minY))?Number(bounds.minY):.08,maxY=Number.isFinite(Number(bounds.maxY))?Number(bounds.maxY):.94,width=Math.max(1,Number(bounds.width)||1),height=Math.max(1,Number(bounds.height)||1);
+    let pixelScale=Infinity;
+    items.forEach(item=>{
+      const {target,extents:e}=item;
+      if(e.left>0)pixelScale=Math.min(pixelScale,(target.x-minX)*width/e.left);
+      if(e.right>0)pixelScale=Math.min(pixelScale,(maxX-target.x)*width/e.right);
+      if(e.top>0)pixelScale=Math.min(pixelScale,(target.y-minY)*height/e.top);
+      if(e.bottom>0)pixelScale=Math.min(pixelScale,(maxY-target.y)*height/e.bottom);
+    });
+    if(!Number.isFinite(pixelScale)||pixelScale<=0)pixelScale=1;
+    return items.map(({pts,sourceCenter,target})=>pts.map(p=>({...p,x:target.x+(p.x-sourceCenter.x)*pixelScale/width,y:target.y+(p.y-sourceCenter.y)*pixelScale/height})));
+  }
+  function polygonLegendLayout(names,W,H){
+    const labels=(Array.isArray(names)?names:[]).map((name,i)=>`${i+1} - ${String(name||'').trim()||`Polígono ${i+1}`}`),width=Math.max(1,n(W)),height=Math.max(1,n(H)),margin=12,itemHeight=24,boxWidth=Math.min(260,Math.max(170,width*.28)),boxHeight=Math.min(height-margin*2,18+labels.length*itemHeight),x=width-margin-boxWidth,y=margin;
+    return{corner:'top-right',box:{x,y,width:boxWidth,height:boxHeight},items:labels.map((label,i)=>({label,x:x+12,y:y+18+i*itemHeight}))};
+  }
+  return{normalizeFactor,adjustedArea,centroid,rotate90,translateWithinBounds,dimensionGeometry,numberedPolygonLabel,polygonLabelAnchor,projectMetricPolygonsCommonScale,polygonLegendLayout};
 });

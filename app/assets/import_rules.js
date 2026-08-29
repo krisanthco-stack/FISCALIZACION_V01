@@ -158,6 +158,11 @@
       owner: find(/propietari[oa](?:\s+registral)?\s*[:#-]?\s*([^,;|]+?)(?=\s+(?:fecha|folio|finca|plano|identificaci[oó]n|c[eé]dula)\b|$)/i),
       date: parseExcelDate(find(/fecha(?:\s+(?:declaraci[oó]n|inspecci[oó]n))?\s*[:#-]?\s*(\d{1,2}[\/-]\d{1,2}[\/-]\d{4}|\d{4}-\d{2}-\d{2})/i)),
       registryArea: find(/[aá]rea(?:\s+seg[uú]n\s+registro)?\s*[:#-]?\s*([0-9.,]+)/i),
+      processType: find(/tipo\s+(?:de\s+)?tr[aá]mite\s*[:#-]?\s*(.+?)(?=\s+(?:provincia|cant[oó]n|distrito|lugar|localidad|poblado|tr[aá]mite|expediente|folio|finca|plano|propietari[oa]|identificaci[oó]n|c[eé]dula|fecha|[aá]rea)\b|$)/i),
+      province: find(/provincia\s*[:#-]?\s*(.+?)(?=\s+(?:cant[oó]n|distrito|lugar|localidad|poblado|tr[aá]mite|expediente|folio|finca|plano|propietari[oa]|identificaci[oó]n|c[eé]dula|fecha|[aá]rea)\b|$)/i),
+      canton: find(/cant[oó]n\s*[:#-]?\s*(.+?)(?=\s+(?:distrito|lugar|localidad|poblado|tr[aá]mite|expediente|folio|finca|plano|propietari[oa]|identificaci[oó]n|c[eé]dula|fecha|[aá]rea)\b|$)/i),
+      district: find(/distrito\s*[:#-]?\s*(.+?)(?=\s+(?:lugar|localidad|poblado|tr[aá]mite|expediente|folio|finca|plano|propietari[oa]|identificaci[oó]n|c[eé]dula|fecha|[aá]rea)\b|$)/i),
+      locality: find(/(?:lugar|localidad|poblado)\s*[:#-]?\s*(.+?)(?=\s+(?:tr[aá]mite|expediente|folio|finca|plano|propietari[oa]|identificaci[oó]n|c[eé]dula|fecha|[aá]rea)\b|$)/i),
     };
   }
 

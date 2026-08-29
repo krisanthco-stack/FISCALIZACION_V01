@@ -1,0 +1,22 @@
+FISCALIZACION L26 - ESTADO DEL WRAPPER WINDOWS
+Fecha: 2026-08-29
+
+IMPLEMENTADO
+- Servidor HTTP local ligado exclusivamente a 127.0.0.1.
+- Carga de L-26 mediante http://localhost:18126 (o puerto alternativo si el preferido esta ocupado).
+- Ventana Electron aislada: nodeIntegration=false, contextIsolation=true, sandbox=true.
+- Bloqueo de navegacion externa dentro de la ventana principal.
+- Configuracion electron-builder para NSIS y portable x64.
+- BUILD_WINDOWS.cmd para construccion desde Windows.
+
+VERIFICACION EN ESTE ENTORNO
+- pytest: 69 passed, 1 skipped (tras agregar pruebas del wrapper).
+- pruebas Node autocontenidas de L-26: 17 passed.
+- pruebas Node del wrapper: 7 passed.
+- 3 pruebas Node de archivos Excel reales no se pueden ejecutar porque los tres XLSX externos que esperan no estaban incluidos en el ZIP recibido.
+
+LIMITACION DEL ENTORNO
+El entorno de ejecucion actual no puede resolver dominios externos desde npm (EAI_AGAIN), por lo que no fue posible descargar Electron/electron-builder ni producir aqui los .exe finales. El proyecto queda listo para ejecutar desktop\BUILD_WINDOWS.cmd en Windows con acceso de red.
+
+IMPORTANTE
+La aplicacion funcional original (index.html, app/index.html, sw.js, app/assets y templates) se protege por comparacion SHA-256 antes/despues del wrapper.
