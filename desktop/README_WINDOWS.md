@@ -30,3 +30,6 @@ Los expedientes y adjuntos continúan persistiendo mediante IndexedDB en el perf
 ## Actualizaciones
 
 Esta envoltura no usa GitHub para autoactualizarse. Una actualización se distribuye como un nuevo instalador o ejecutable portable. La aplicación conserva su lógica PWA interna, pero la distribución de nuevas versiones del `.exe` es independiente.
+
+## Lector web interno de enlaces
+En la versión Windows, el botón **Abrir enlace** abre una ventana propia de L-26. Desde esa ventana se puede navegar y usar **Leer página** o **Leer selección** para enviar texto al expediente asociado. El número de trámite del expediente permanece protegido y no se reemplaza por el contenido leído.

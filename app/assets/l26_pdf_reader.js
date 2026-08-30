@@ -88,12 +88,38 @@
     return {text,hasText:Boolean(text),pagesRead:limit,totalPages:total};
   }
 
+  async function extractOcrTextFromPdf(pdf,options={}){
+    const total=Math.max(0,Number(pdf?.numPages)||0);
+    if(!pdf||typeof pdf.getPage!=='function')throw new Error('No se recibió un documento PDF válido para OCR.');
+    if(typeof root?.TextDetector!=='function'||!root?.document)return{text:'',hasText:false,pagesRead:0,totalPages:total,ocr:true,ocrAvailable:false};
+    const detector=new root.TextDetector(),requested=Number(options.ocrMaxPages)||Number(options.maxPages)||total||1,limit=Math.max(1,Math.min(total||1,requested)),pages=[];
+    for(let pageNo=1;pageNo<=limit;pageNo++){
+      options.onProgress?.({page:pageNo,total,ocr:true});
+      const page=await pdf.getPage(pageNo),viewport=page.getViewport({scale:Math.max(1.25,Math.min(2,Number(options.ocrScale)||1.6))}),canvas=root.document.createElement('canvas');
+      canvas.width=Math.max(1,Math.ceil(viewport.width));canvas.height=Math.max(1,Math.ceil(viewport.height));
+      const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+      await page.render({canvasContext:ctx,viewport}).promise;
+      const source=typeof root.createImageBitmap==='function'?await root.createImageBitmap(canvas):canvas;
+      try{
+        const blocks=await detector.detect(source),text=(blocks||[]).map(block=>String(block?.rawValue||block?.text||'').replace(/\s+/g,' ').trim()).filter(Boolean).join(' ');
+        if(text)pages.push(text);
+      }finally{source?.close?.();canvas.width=1;canvas.height=1}
+    }
+    const text=pages.join('\n\n').trim();
+    return{text,hasText:Boolean(text),pagesRead:limit,totalPages:total,ocr:true,ocrAvailable:true};
+  }
+
   async function extractDocumentText(blob,options={}){
     if(!blob)throw new Error('No se recibió el PDF para leer.');
     const pdfjs=await loadPdfJs(),bytes=new Uint8Array(await blob.arrayBuffer()),task=pdfjs.getDocument({data:bytes,isEvalSupported:false});
     let pdf=null;
-    try{pdf=await task.promise;return await extractTextFromPdf(pdf,options)}
-    finally{try{await pdf?.destroy?.()}catch(_){ }}
+    try{
+      pdf=await task.promise;
+      const digital=await extractTextFromPdf(pdf,options);
+      if(digital.hasText||options.ocrFallback===false)return digital;
+      const ocr=await extractOcrTextFromPdf(pdf,options);
+      return ocr.hasText?ocr:{...digital,ocrAttempted:true,ocrAvailable:ocr.ocrAvailable};
+    }finally{try{await pdf?.destroy?.()}catch(_){ }}
   }
 
   function textItemsForViewport(pdfjs,content,viewport){
@@ -275,5 +301,5 @@
     for(const id of ['pdfViewerPrev','pdfViewerNext','pdfViewerZoomOut','pdfViewerZoomIn','pdfViewerFit','pdfViewerReadPage','pdfViewerSelectArea']){const el=byId(id);if(el)el.onclick=null}const stage=byId('pdfViewerStage');if(stage){stage.onpointerdown=null;stage.onpointermove=null;stage.onpointerup=null;stage.onpointercancel=null;stage.classList.remove('is-selecting')}hideSelection()
   }
 
-  return {open,close,rectsIntersect,textFromItemsInRect,normalizeRect,textItemsForViewport,loadPdfJs,extractTextFromPdf,extractDocumentText,readCurrentPage,enableAreaSelection,PDFJS_VERSION,PDFJS_CACHE};
+  return {open,close,rectsIntersect,textFromItemsInRect,normalizeRect,textItemsForViewport,loadPdfJs,extractTextFromPdf,extractOcrTextFromPdf,extractDocumentText,readCurrentPage,enableAreaSelection,PDFJS_VERSION,PDFJS_CACHE};
 });

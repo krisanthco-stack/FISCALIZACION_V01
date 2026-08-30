@@ -13,6 +13,7 @@
     ['virgen','La Virgen'],
     ['las horquetas','Las Horquetas'],
     ['horquetas','Las Horquetas'],
+    ['hoquetas','Las Horquetas'],
     ['llanuras del gaspar','Llanuras del Gaspar'],
     ['llanuras gaspar','Llanuras del Gaspar'],
     ['curena','Cureña']

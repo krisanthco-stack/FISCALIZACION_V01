@@ -10,7 +10,7 @@ test('Electron main process keeps L-26 isolated from Node', () => {
   assert.match(source, /nodeIntegration\s*:\s*false/);
   assert.match(source, /contextIsolation\s*:\s*true/);
   assert.match(source, /sandbox\s*:\s*true/);
-  assert.doesNotMatch(source, /preload\s*:/);
+  assert.match(source, /preload\s*:\s*path\.join\(__dirname, 'app-preload\.js'\)/);
 });
 
 test('Electron main process starts loopback server and protects navigation', () => {
@@ -18,6 +18,7 @@ test('Electron main process starts loopback server and protects navigation', () 
   assert.match(source, /127\.0\.0\.1/);
   assert.match(source, /will-navigate/);
   assert.match(source, /setWindowOpenHandler/);
+  assert.match(source, /createReaderWindow/);
   assert.match(source, /shell\.openExternal/);
 });
 

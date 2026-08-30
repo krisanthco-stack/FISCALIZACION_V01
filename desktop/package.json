@@ -20,7 +20,10 @@
     "files": [
       "main.js",
       "server.js",
-      "package.json"
+      "package.json",
+      "app-preload.js",
+      "reader-preload.js",
+      "reader.html"
     ],
     "extraResources": [
       {
@@ -41,7 +44,10 @@
       "output": "dist"
     },
     "win": {
-      "target": ["nsis", "portable"],
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "build-icon.png"
     },
     "nsis": {

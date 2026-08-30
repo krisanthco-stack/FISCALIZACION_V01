@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>L-26 · Fuente del expediente</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#17382b;background:#f4f7f5}
+    *{box-sizing:border-box}body{margin:0;overflow:hidden}
+    .toolbar{height:72px;display:grid;grid-template-columns:auto minmax(160px,1fr) auto;gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid #c9d5cf;background:#fff}
+    .nav,.actions{display:flex;gap:6px;align-items:center}.meta{min-width:0}.title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.address{font-size:11px;color:#52675e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.status{font-size:11px;color:#355f4d}
+    button{border:1px solid #a8b9b0;border-radius:7px;background:#fff;padding:8px 10px;font-weight:650;cursor:pointer}button:hover{background:#eef5f1}button:disabled{opacity:.45;cursor:default}.primary{background:#245d46;color:#fff;border-color:#245d46}.primary:hover{background:#1d4e3a}.close{border-color:#b76b6b;color:#7e2424}
+  </style>
+</head>
+<body>
+  <header class="toolbar">
+    <div class="nav">
+      <button id="readerBack" type="button" title="Atrás">←</button>
+      <button id="readerForward" type="button" title="Adelante">→</button>
+      <button id="readerReload" type="button" title="Recargar">⟳</button>
+    </div>
+    <div class="meta">
+      <div class="title" id="readerTitle">Fuente del expediente</div>
+      <div class="address" id="readerAddress"></div>
+      <div class="status" id="readerStatus">Cargando…</div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="readerReadPage" type="button">📖 Leer página</button>
+      <button class="primary" id="readerReadArea" type="button">▣ Leer área</button>
+      <button class="close" id="readerClose" type="button">Cerrar</button>
+    </div>
+  </header>
+</body>
+</html>
