@@ -1,0 +1,62 @@
+L-26 — CORRECCIÓN DE CONFORMIDAD POR ETAPAS
+Fecha: 2026-08-30
+Base: FISCALIZACION_L26_MEJORAS_ESTRUCTURADAS_2026-08-30.zip
+
+ETAPA 1 — CONTADORES
+- Trámites = total real de expedientes.
+- En Gestión = expedientes trasladados a Gestión.
+- Activos = total - Gestión.
+- Caso de control: 577 total / 6 Gestión / 571 Activos.
+
+ETAPA 2 — COLORES Y +1 AÑO EN GESTIÓN
+- Azul: Notificado o Registrado.
+- Rojo: sin acción y fecha de toma/cronología >1 año, aunque workflow esté Finalizado/completed.
+- Amarillo: sin acción y no supera un año.
+
+ETAPA 3 — UBICACIÓN
+- Interfaz operativa: "Expediente de campo" -> "Ubicación".
+- Encabezado operativo: "Ubicación de la inspección".
+- Títulos legales de informes con "EXPEDIENTE / TRÁMITE" se conservan.
+
+ETAPA 4 — TERRITORIO
+- Agrupación por normalización de mayúsculas/minúsculas, acentos, artículos y alias explícitos.
+- Hoquetas/Horquetas/Las Horquetas se agrupan.
+- Palmitas/Las Palmitas se agrupan.
+- Se eliminó la coincidencia general por distancia de una letra para evitar unir nombres distintos.
+- Inferencia de Distrito por Lugar solo cuando existe un único Distrito válido.
+
+ETAPA 5 — PDF EN TABLET / OFFLINE
+- PDF adjunto continúa completando solamente campos vacíos.
+- Service Worker precarga PDF.js y worker durante instalación/actualización para que el primer PDF posterior pueda abrirse sin red.
+- El caché PDF se conserva al cambiar la versión de la aplicación.
+- Limitación técnica: los binarios PDF.js no pudieron incrustarse físicamente en este ZIP porque el entorno de construcción no tiene salida de red; si la instalación/actualización ocurre completamente sin Internet y el motor nunca fue cacheado, se conserva el botón de lector del dispositivo como respaldo.
+
+ETAPA 6 — LECTOR WEB
+- Se retiró el botón duplicado "Leer" de la pantalla principal.
+- Leer página / Leer área viven en el lector web interno de Windows/Electron.
+- Leer área es selección rectangular real, no selección de texto manual.
+- Extrae texto DOM dentro del rectángulo y, si no hay texto, intenta OCR sobre captura cuando TextDetector está disponible.
+- El trámite abierto sigue protegido y no puede ser reemplazado por el lector.
+
+ETAPA 7 — RECUPERACIÓN / FECHAS
+- Al restaurar un expediente separado, los PDF recuperados regeneran caseId, expedienteNumber, inspectionNumber y documentKey.
+- Una fecha genérica del lector ya no rellena simultáneamente declaración e inspección.
+- "Fecha de declaración" y "Fecha de inspección/visita" se aplican únicamente a su campo correspondiente.
+- La auditoría global sigue siendo de solo lectura y su exportación conserva candidatos recuperables.
+
+INVARIANTES AUDITADOS
+- IndexedDB: LibretaValoracionCR
+- DB_VERSION: 6
+- No existe deleteDatabase.
+- Trámites distintos no se fusionan por finca/plano/derecho.
+- No se eliminaron archivos de ejecución del paquete base.
+
+VERIFICACIÓN PRE-EMPAQUETADO
+- Pytest: 139 passed, 1 skipped.
+- Node/escritorio autocontenido: 73 passed, 0 failed.
+- Suite de Excel externos: 3 casos no ejecutables por ausencia de los archivos /mnt/data/Plantilla_Importacion_Expedientes_V2.xlsx, /mnt/data/L-L-P..xlsx y /mnt/data/PF- POR FECHA_.xlsx. El caso sintético de 407 filas incluido en esa suite sí pasa.
+
+VERIFICACIÓN DE PAQUETE EXTRAÍDO
+- Manifiesto candidato: 146/146 archivos OK.
+- Pytest sobre ZIP extraído: 139 passed, 1 skipped.
+- Node/escritorio sobre ZIP extraído: 73 passed, 0 failed.

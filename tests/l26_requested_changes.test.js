@@ -80,3 +80,14 @@ test('invalid district evidence is not propagated into empty cases',()=>{
   assert.equal(result.cases[0].visit.district,'');
   assert.equal(result.inferred.length,0);
 });
+
+test('summary counts use total cases and subtract management cases from active',()=>{
+  const cases=Array.from({length:577},(_,i)=>({id:String(i),management:{inspectionCompleted:i<6}}));
+  const counts=management.summaryCounts(cases,record=>Boolean(record.management?.inspectionCompleted));
+  assert.deepEqual(counts,{total:577,management:6,active:571});
+});
+
+test('management overdue age ignores workflow completed stage and depends only on chronology date',()=>{
+  assert.equal(management.isOlderThanYear('2024-08-29',new Date('2026-08-30T12:00:00')),true);
+  assert.equal(management.isOlderThanYear('2026-02-01',new Date('2026-08-30T12:00:00')),false);
+});

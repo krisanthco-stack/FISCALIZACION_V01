@@ -1,7 +1,21 @@
-const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1';
+const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1-conformidad-v1';
 const CORE=['./','./index.html','./app/index.html','./app/assets/import_rules.js','./app/assets/l26_integrity_core.js','./app/assets/l26_management_core.js','./app/assets/l26_territory_core.js','./app/assets/l26_reader_apply_core.js','./app/assets/l26_excel_import_core.js','./app/assets/l26_croquis_core.js','./app/assets/l26_filter_core.js','./app/assets/l26_pdf_reader.js','./manifest.webmanifest','./favicon-48.png','./apple-touch-icon.png','./icon-192.png','./icon-512.png','./icon-maskable-192.png','./icon-maskable-512.png'];
-self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE))));
-self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
+const PDFJS_CACHE='l26-pdfjs-6.2.108';
+const PDFJS_ASSETS=['https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/build/pdf.min.mjs','https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/build/pdf.worker.min.mjs'];
+async function prewarmPdfJs(){
+  try{
+    const cache=await caches.open(PDFJS_CACHE);
+    await Promise.all(PDFJS_ASSETS.map(async url=>{
+      if(await cache.match(url))return;
+      try{
+        const response=await fetch(url,{mode:'cors',cache:'reload'});
+        if(response?.ok)await cache.put(url,response.clone());
+      }catch(error){console.warn('Motor PDF pendiente de precarga:',url,error?.message||error)}
+    }));
+  }catch(error){console.warn('No se pudo preparar el lector PDF offline:',error?.message||error)}
+}
+self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(CACHE);await cache.addAll(CORE);await prewarmPdfJs()})()));
+self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE&&key!==PDFJS_CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
   event.respondWith(caches.match(event.request).then(cached=>{

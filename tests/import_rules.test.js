@@ -161,3 +161,13 @@ test('dedupeRows conserva trámites distintos aunque compartan propiedad',()=>{
   assert.equal(result.records.length,2);
   assert.equal(result.duplicates,0);
 });
+
+test('lector separa fecha de declaración y fecha de inspección y no aplica fecha genérica',()=>{
+  const explicit=rules.detectFields('Fecha de declaración: 01/02/2025 Fecha de inspección: 03/04/2026');
+  assert.equal(explicit.declarationDate,'2025-02-01');
+  assert.equal(explicit.inspectionDate,'2026-04-03');
+  const generic=rules.detectFields('Fecha: 30/12/2025');
+  assert.equal(generic.declarationDate,'');
+  assert.equal(generic.inspectionDate,'');
+  assert.equal(generic.date,undefined);
+});

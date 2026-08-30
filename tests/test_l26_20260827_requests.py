@@ -99,10 +99,11 @@ def test_management_colors_notification_and_actions():
 
 def test_management_keeps_year_alerts_and_active_counter_excludes_management():
     render=function_block('renderManagementList')
-    assert 'caseNeedsAgeAlarm(c)' in render
+    assert 'L26ManagementCore.isOlderThanYear(caseChronologyDate(c))' in render
     assert 'Alarma: más de un año' in render
     active=function_block('renderCaseList')
     assert 'all.filter(c=>!managementInspectionCompleted(c))' in active
+    assert 'L26ManagementCore.summaryCounts(all,managementInspectionCompleted)' in active
     assert "$('#processCaseCount').textContent=visibleCases.length" in active
 
 
