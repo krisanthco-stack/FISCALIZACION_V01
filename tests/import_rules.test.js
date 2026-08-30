@@ -133,3 +133,31 @@ test('detectFields reconoce ubicación administrativa y tipo de trámite en text
   assert.equal(detected.district,'Puerto Viejo');
   assert.equal(detected.locality,'La Virgen');
 });
+
+test('protege trámite y valida distrito antes de aplicar lectura automática',()=>{
+  const integrity=require('../app/assets/l26_integrity_core.js');
+  const result=rules.protectReaderFields('2025-17123',{
+    tramite:'2024-07370',district:'Horquetas',locality:'Chilamate',owner:'Ana Pérez'
+  },integrity.normalizeDistrict);
+  assert.equal(result.fields.tramite,undefined);
+  assert.equal(result.fields.district,'Las Horquetas');
+  assert.equal(result.fields.locality,'Chilamate');
+  assert.equal(result.fields.owner,'Ana Pérez');
+  assert.deepEqual(result.tramiteConflict,{current:'2025-17123',detected:'2024-07370'});
+});
+
+test('distrito no oficial se excluye de la actualización automática',()=>{
+  const integrity=require('../app/assets/l26_integrity_core.js');
+  const result=rules.protectReaderFields('2025-17123',{district:'Chilamate'},integrity.normalizeDistrict);
+  assert.equal(result.fields.district,undefined);
+  assert.equal(result.invalidDistrict,'Chilamate');
+});
+
+test('dedupeRows conserva trámites distintos aunque compartan propiedad',()=>{
+  const result=rules.dedupeRows([
+    {tramite:'2024-07370',folio:'275480',plano:'H-1-2020',derecho:'001'},
+    {tramite:'2025-17123',folio:'275480',plano:'H-1-2020',derecho:'001'}
+  ]);
+  assert.equal(result.records.length,2);
+  assert.equal(result.duplicates,0);
+});

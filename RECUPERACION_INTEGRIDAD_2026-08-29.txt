@@ -1,0 +1,58 @@
+L-26 — RECUPERACIÓN E INTEGRIDAD — 2026-08-29
+=================================================
+
+OBJETIVO DE ESTA ENTREGA
+------------------------
+Esta versión prioriza conservar y separar correctamente los trámites existentes.
+No borra IndexedDB, no cambia el nombre de la base LibretaValoracionCR y mantiene DB_VERSION=6.
+
+PROTECCIONES PRINCIPALES
+------------------------
+1. Trámites diferentes nunca se fusionan solo porque tengan la misma finca, plano o derecho.
+   Ejemplo: 2024-07370 y 2025-17123 permanecen como expedientes separados.
+2. El lector de PDF/página NO puede cambiar el número del trámite del expediente abierto.
+   Si detecta otro número, registra un conflicto y conserva el trámite actual.
+3. La importación Excel/CSV usa identidad de trámite + inmueble y no colapsa trámites históricos.
+4. Los paquetes de Gestión, JSON/ZIP, recuperación legacy y Recuperar eliminados aplican la misma protección.
+5. Un respaldo con el mismo ID interno pero otro trámite se restaura como expediente separado.
+6. Distrito se valida antes de aplicarse automáticamente. Horquetas se normaliza a Las Horquetas.
+7. La auditoría de integridad es de SOLO LECTURA: no borra, no fusiona ni renombra expedientes.
+8. Si el nombre de un PDF contiene un número de trámite (por ejemplo 2025-17123), ese número tiene prioridad absoluta: nunca se vincula a otro trámite por finca/folio.
+
+ANTES DE RECUPERAR DATOS
+------------------------
+- NO borre la versión anterior.
+- NO limpie datos del navegador ni almacenamiento del sitio.
+- NO desinstale la PWA/app anterior mientras se revisan los datos.
+- Si la versión anterior todavía muestra los expedientes correctos, exporte inmediatamente un paquete de Gestión o respaldo JSON/ZIP.
+- Para conservar IndexedDB, abra la actualización desde el MISMO origen/URL/perfil del navegador que utilizaba antes. Abrir una copia desde otra carpeta, URL, puerto o perfil puede mostrar otra base local aunque los datos anteriores sigan existiendo.
+
+CÓMO AUDITAR
+------------
+1. Abra L-26 con el mismo origen/perfil donde estaban sus datos.
+2. Entre a Informes > Auditoría del expediente.
+3. Pulse "Auditar integridad de todos".
+4. Revise:
+   - documentos asociados a otro número de trámite;
+   - nombres de PDF/archivo fuente con otro trámite;
+   - distritos no reconocidos;
+   - expedientes sin trámite;
+   - identidades exactas repetidas;
+   - copias recuperables.
+5. Pulse "Descargar auditoría de integridad" para conservar el JSON antes de hacer cambios manuales.
+
+RECUPERAR ELIMINADOS / COPIAS INTERNAS
+--------------------------------------
+- Las copias marcadas "TRÁMITE DISTINTO" NO se fusionan con el expediente actual.
+- Al pulsar Recuperar, se crea/restaura un expediente separado y se reasocian sus fotos/PDF recuperables.
+- El respaldo original de recuperación no se borra.
+
+LÍMITE DE RECUPERACIÓN AUTOMÁTICA
+---------------------------------
+Si dos expedientes ya fueron fusionados en una versión anterior y no existe copia interna, respaldo ZIP/JSON ni versión anterior accesible, L-26 no inventará datos históricos. La auditoría puede detectar números distintos en PDF, nombres de archivo y metadatos, pero la reconstrucción completa debe apoyarse en una fuente real.
+
+CASO DE CONTROL
+---------------
+2024-07370 + finca/plano/derecho X
+2025-17123 + finca/plano/derecho X
+Resultado requerido: 2 expedientes separados.
