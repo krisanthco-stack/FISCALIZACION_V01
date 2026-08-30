@@ -1,0 +1,62 @@
+L-26 — CAMBIOS ESTRUCTURADOS 2026-08-30
+========================================
+
+BASE UTILIZADA
+- FISCALIZACION_L26_LECTOR_WEB_INTERNO_2026-08-29.zip
+- No se mezclaron archivos de versiones anteriores.
+- IndexedDB permanece: LibretaValoracionCR, versión 6.
+
+ETAPA 1 — GESTIÓN
+- Estados independientes: Notificado y Registrado.
+- Botón: Notificado / Registrado.
+- Filtros adicionales en la misma fila: Notificados y Registrados.
+- Color azul: Notificado o Registrado.
+- Color rojo: sin acción y antigüedad mayor a un año.
+- Color amarillo: sin acción y antigüedad no mayor a un año.
+- Activos = total de expedientes menos expedientes trasladados a Gestión.
+- Campo Observación para Gestión al final de Fiscalización.
+- La observación aparece en un recuadro pequeño superior derecho en Gestión solo si tiene contenido.
+
+ETAPA 2 — PDF Y LECTOR WEB
+- Adjuntar/cargar PDF guarda el documento y lo analiza automáticamente.
+- El PDF completa únicamente campos vacíos; no reemplaza datos existentes.
+- El número de trámite permanece protegido e inmutable.
+- Si no hay texto digital, se intenta OCR automático local cuando el navegador/dispositivo ofrece TextDetector.
+- El OCR automático se limita a páginas iniciales para proteger memoria/rendimiento en tablet.
+- El visor PDF usa canvas/PDF.js y mantiene navegación/zoom para tablet.
+- Leer página y Leer área pertenecen exclusivamente al lector de páginas web internas.
+- El visor PDF ya no muestra controles Leer página / Leer área.
+
+ETAPA 3 — TERRITORIO
+- Distrito: formato tipo oración (ej.: Las horquetas, Puerto viejo).
+- Lugar/poblado: inicial de cada palabra en mayúscula (ej.: Las Palmitas).
+- La agrupación ignora mayúsculas/minúsculas, acentos, espacios sobrantes y artículos iniciales El/La/Los/Las.
+- Horquetas / Las Horquetas y HOQUETAS se reconocen como Las Horquetas para validación territorial.
+- Palmitas / Las Palmitas y equivalentes se agrupan como el mismo lugar.
+- Si un expediente tiene Lugar pero Distrito vacío, el Distrito se completa solo cuando todos los expedientes relacionados con ese lugar aportan un único Distrito válido.
+- Si hay distritos contradictorios, no se infiere ninguno.
+- Nunca se reemplaza un Distrito ya informado por esta inferencia.
+
+ETAPA 4 — INTERFAZ
+- Se eliminó solo el aviso verde de sistema de salida CR-SIRGAS/CRTM05; las coordenadas y Tomar punto permanecen.
+- Servicios 1 y Servicios 2 permanecen en una fila; al cerrar muestran solo lo seleccionado.
+- Agregar vértices funciona como acordeón Mostrar/Ocultar.
+- Al crear otro polígono se abre el acordeón de vértices.
+- Mover/ubicar y arrastrar vértices no fueron eliminados ni reescritos.
+- La línea de firma de la resolución se ubica más abajo en HTML/PDF y DOCX.
+
+PROTECCIONES CONSERVADAS
+- Trámites diferentes nunca se fusionan solo por finca/plano/derecho.
+- PDF o página web no pueden cambiar el número del expediente abierto.
+- No se introdujo deleteDatabase ni migración destructiva.
+- Recuperación, auditoría de integridad, croquis proporcional, filtro por año y lector web interno se conservaron.
+
+AUDITORÍA PREVIA AL EMPAQUETADO
+- 130 pruebas Python pasaron; 1 prueba omitida por condición prevista.
+- 59 pruebas Node autocontenidas pasaron.
+- 11 pruebas del escritorio pasaron.
+- IndexedDB verificado: LibretaValoracionCR, versión 6.
+- No existe llamada deleteDatabase en la aplicación.
+- La protección de identidad del número de trámite permanece activa.
+- No se eliminó ningún archivo respecto de la última versión base.
+- La suite que depende de tres archivos Excel externos no incluidos en el paquete no forma parte de la regresión autocontenida.

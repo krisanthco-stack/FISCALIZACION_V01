@@ -25,6 +25,7 @@ test('sin trámite usa identidad de propiedad separada de los trámites conocido
 
 test('normaliza solamente distritos oficiales de Sarapiquí',()=>{
   assert.equal(core.normalizeDistrict('Horquetas'),'Las Horquetas');
+  assert.equal(core.normalizeDistrict('HOQUETAS'),'Las Horquetas');
   assert.equal(core.normalizeDistrict('LAS HORQUETAS'),'Las Horquetas');
   assert.equal(core.normalizeDistrict('Puerto Viejo'),'Puerto Viejo');
   assert.equal(core.normalizeDistrict('La Virgen'),'La Virgen');

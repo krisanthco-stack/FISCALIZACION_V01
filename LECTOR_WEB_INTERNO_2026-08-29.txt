@@ -1,0 +1,21 @@
+L-26 — LECTOR WEB INTERNO (WINDOWS)
+
+USO:
+1. Abra un expediente que tenga enlace.
+2. Pulse "Abrir enlace".
+3. En la versión Windows/Electron se abrirá una ventana propia de L-26.
+4. Navegue normalmente dentro de esa ventana.
+5. Pulse "Leer página" para analizar todo el texto visible, o seleccione texto y pulse "Leer selección".
+6. L-26 enviará la lectura al expediente exacto asociado al enlace.
+
+PROTECCIONES:
+- El número de trámite del expediente NO puede ser reemplazado por el lector.
+- Los distritos continúan pasando por la validación de integridad.
+- No cambia DB_NAME, DB_VERSION ni se borra IndexedDB.
+- En navegador/PWA sin Electron, "Abrir enlace" conserva el comportamiento anterior.
+
+CONTROLES DE LA VENTANA:
+← Atrás | → Adelante | ⟳ Recargar | Leer página | Leer selección | Cerrar
+
+NOTA:
+El paquete está preparado para Electron 44. El entorno de generación actual no pudo descargar Electron desde npm por un error DNS EAI_AGAIN, por lo que el ejecutable final debe construirse en Windows con desktop/BUILD_WINDOWS.cmd cuando haya acceso a npm.

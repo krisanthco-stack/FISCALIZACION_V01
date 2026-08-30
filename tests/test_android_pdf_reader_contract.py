@@ -15,8 +15,7 @@ def test_pdf_reader_asset_and_canvas_modal_exist():
 def test_pdf_reader_has_touch_friendly_controls():
     for control in (
         'pdfViewerPrev', 'pdfViewerNext', 'pdfViewerZoomOut', 'pdfViewerZoomIn',
-        'pdfViewerFit', 'pdfViewerReadPage', 'pdfViewerSelectArea',
-        'pdfViewerOpenSystem', 'pdfViewerDownload'
+        'pdfViewerFit', 'pdfViewerOpenSystem', 'pdfViewerDownload'
     ):
         assert f'id="{control}"' in INDEX
 
@@ -72,22 +71,22 @@ def test_detected_case_fields_are_applied_automatically_without_prompts():
     assert 'automáticamente' in body or 'automaticamente' in body
 
 
-def test_pdf_preview_sends_selected_text_to_import_rules_and_case_updater():
+def test_pdf_preview_is_display_only_and_keeps_system_fallback():
     start = INDEX.index('async function openPdfPreview')
     end = INDEX.index("$('#pdfViewerClose')", start)
     body = INDEX[start:end]
-    assert 'ImportRules.detectFields' in body
-    assert 'applyReadCandidates' in body
-    assert 'onText' in body
+    assert 'L26PdfReader.open' in body
+    assert 'onText' not in body
+    assert 'applyReadCandidates' not in body
     assert 'systemUrl' in body
 
 
-def test_reading_pdf_source_opens_internal_reader_in_area_mode():
+def test_reading_pdf_source_requires_attachment_instead_of_area_reader():
     start = INDEX.index('async function readCaseSource')
     end = INDEX.index('async function uploadPdfDocuments', start)
     body = INDEX[start:end]
-    assert 'openPdfPreview' in body
-    assert 'startSelection:true' in body
+    assert 'openPdfPreview' not in body
+    assert 'Adjuntar el documento descargado' in body
 
 
 def test_reader_exports_full_document_text_extraction_for_auto_fill():
@@ -106,13 +105,13 @@ def test_pdf_upload_auto_reads_and_applies_detected_fields():
     assert 'applyReadCandidates' in body
 
 
-def test_manual_attachment_auto_reads_pdf_and_falls_back_to_area_reader():
+def test_manual_attachment_auto_reads_pdf_without_area_reader_fallback():
     start = INDEX.index('function chooseCaseAttachment')
     end = INDEX.index('function openCaseSource', start)
     body = INDEX[start:end]
     assert 'readPdfDocumentIntoCase' in body
-    assert 'openPdfPreview' in body
-    assert 'startSelection:true' in body
+    assert 'openPdfPreview' not in body
+    assert 'readCount' in body
 
 
 def test_import_pdf_auto_reads_after_attaching_to_matched_case():
@@ -128,3 +127,12 @@ def test_read_candidates_support_location_fields_from_pdf_or_page():
     body = INDEX[start:end]
     for field in ('district', 'locality', 'province', 'canton'):
         assert field in body
+
+def test_attached_pdf_text_extraction_has_automatic_ocr_fallback_without_ui_area_reader():
+    reader = READER
+    start = reader.index('async function extractDocumentText')
+    end = reader.index('function textItemsForViewport', start)
+    body = reader[start:end]
+    assert 'ocrFallback' in body
+    assert 'extractOcrTextFromPdf' in body
+    assert 'TextDetector' in reader

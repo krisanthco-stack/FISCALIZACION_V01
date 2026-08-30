@@ -90,7 +90,9 @@ def test_management_colors_notification_and_actions():
     assert 'managementNotificationState' in status
     render=function_block('renderManagementList')
     assert 'data-management-notification' in render
-    assert 'Notificando' in render and 'Notificado' in render
+    assert 'Notificado / Registrado' in render
+    assert 'L26ManagementCore.colorClass' in render
+    assert 'management-action-blue' in css
     assert 'data-management-package' not in render
     assert 'managementPackageExportBtn' in HTML
 
