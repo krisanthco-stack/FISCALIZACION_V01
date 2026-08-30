@@ -1,0 +1,24 @@
+{
+  "fecha": "2026-08-29",
+  "tipo": "integridad-recuperacion",
+  "base_indexeddb": "LibretaValoracionCR",
+  "db_version": 6,
+  "destructivo": false,
+  "invariantes": [
+    "tramites distintos no se fusionan por inmueble",
+    "lector PDF/pagina no sobrescribe numero de tramite",
+    "restauracion con conflicto de tramite crea expediente separado",
+    "auditoria de integridad es solo lectura"
+  ],
+  "caso_regresion": {
+    "tramite_a": "2024-07370",
+    "tramite_b": "2025-17123",
+    "misma_propiedad": true,
+    "resultado": "dos expedientes separados"
+  },
+  "archivos_excel_externos_no_incluidos_en_la_entrega": [
+    "Plantilla_Importacion_Expedientes_V2.xlsx",
+    "L-L-P..xlsx",
+    "PF- POR FECHA_.xlsx"
+  ]
+}

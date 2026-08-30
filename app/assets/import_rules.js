@@ -110,11 +110,18 @@
     return result;
   }
 
+  function recordIdentity(record) {
+    const tramite = compact(record?.tramite);
+    const property = propertyIdentity(record);
+    if (tramite) return `T:${tramite}|${property || 'NO-PROP'}`;
+    return property ? `NO-T|${property}` : '';
+  }
+
   function dedupeRows(records) {
     const result = [], byIdentity = new Map();
     let duplicates = 0;
     for (const record of records || []) {
-      const key = propertyIdentity(record);
+      const key = recordIdentity(record);
       if (!key) { result.push({ ...record }); continue; }
       if (!byIdentity.has(key)) {
         const copy = { ...record };
@@ -166,6 +173,25 @@
     };
   }
 
+  function protectReaderFields(currentTramite, detected, normalizeDistrict) {
+    const fields = { ...(detected || {}) };
+    const current = String(currentTramite || '').trim();
+    const detectedTramite = String(fields.tramite || '').trim();
+    let tramiteConflict = null;
+    if (detectedTramite && current && compact(detectedTramite) !== compact(current)) {
+      tramiteConflict = { current, detected: detectedTramite };
+    }
+    delete fields.tramite;
+    let invalidDistrict = '';
+    if (String(fields.district || '').trim()) {
+      const raw = String(fields.district).trim();
+      const normalized = typeof normalizeDistrict === 'function' ? normalizeDistrict(raw) : raw;
+      if (normalized) fields.district = normalized;
+      else { invalidDistrict = raw; delete fields.district; }
+    }
+    return { fields, tramiteConflict, invalidDistrict, detectedTramite };
+  }
+
   function applyFields(target, detected, selected, allowOverwrite) {
     const result = { ...(target || {}) };
     for (const [key, value] of Object.entries(detected || {})) {
@@ -187,5 +213,5 @@
     return `<details class="place-notes inline-accordion"><summary><span><b>Notas del poblado</b> · ${escapeHtml(placeName || 'Sin poblado')}</span><small>${countLabel}</small></summary><div class="place-notes-body"><div class="place-notes-head"><h5>Lista breve del poblado</h5><button class="btn small" type="button" data-download-place-notes>Descargar lista</button></div><ol class="place-notes-list">${rows}</ol></div></details>`;
   }
 
-  return { compact, normalizeHeader, preserveIdentifier, parseExcelDate, extractLink, propertyIdentity, findIdentityMatch, findCompatibleProperty, rowsToObjects, mapRow, dedupeRows, streetLevelLabel, streetLevelDifferenceLabel, detectFields, applyFields, placeNotesMarkup };
+  return { compact, normalizeHeader, preserveIdentifier, parseExcelDate, extractLink, propertyIdentity, recordIdentity, findIdentityMatch, findCompatibleProperty, rowsToObjects, mapRow, dedupeRows, streetLevelLabel, streetLevelDifferenceLabel, detectFields, protectReaderFields, applyFields, placeNotesMarkup };
 });
