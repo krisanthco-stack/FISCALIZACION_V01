@@ -37,7 +37,7 @@ test('reader toolbar supports navigation, page read, area read and close', () =>
   }
   assert.match(preload, /l26:reader-command/);
   assert.match(preload, /read-page/);
-  assert.match(preload, /read-selection/);
+  assert.match(preload, /read-area/);
 });
 
 test('desktop package includes the preload and reader runtime files', () => {

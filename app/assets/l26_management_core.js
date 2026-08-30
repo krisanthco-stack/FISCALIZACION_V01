@@ -27,6 +27,20 @@
     return olderThanYear?'management-action-red':'management-action-yellow';
   }
   function activeCount(total,managementCount){return Math.max(0,(Number(total)||0)-(Number(managementCount)||0))}
+  function summaryCounts(cases,isManagement){
+    const list=Array.isArray(cases)?cases:[];
+    const predicate=typeof isManagement==='function'?isManagement:record=>Boolean(record?.management?.inspectionCompleted);
+    const management=list.reduce((count,record)=>count+(predicate(record)?1:0),0);
+    return{total:list.length,management,active:activeCount(list.length,management)};
+  }
+  function isOlderThanYear(dateValue,now=new Date()){
+    const value=String(dateValue||'').trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+    const inspected=new Date(`${value}T12:00:00`);
+    if(Number.isNaN(inspected.getTime()))return false;
+    const cutoff=new Date(now.getFullYear()-1,now.getMonth(),now.getDate(),12,0,0,0);
+    return inspected<cutoff;
+  }
   function actionLabel(record){
     const state=actionState(record);
     if(state.notified&&state.registered)return'Notificado · Registrado';
@@ -34,5 +48,5 @@
     if(state.registered)return'Registrado';
     return'Sin acción';
   }
-  return{actionState,filterByActions,colorClass,activeCount,actionLabel};
+  return{actionState,filterByActions,colorClass,activeCount,summaryCounts,isOlderThanYear,actionLabel};
 });

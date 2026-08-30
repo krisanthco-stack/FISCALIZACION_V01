@@ -85,32 +85,128 @@ function sizeReaderView(context) {
   });
 }
 
-async function readRemotePage(context, mode) {
+function remoteAreaSelector() {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    const box = document.createElement('div');
+    const hint = document.createElement('div');
+    Object.assign(overlay.style, { position:'fixed', inset:'0', zIndex:'2147483647', cursor:'crosshair', background:'rgba(18,92,65,.035)', touchAction:'none' });
+    Object.assign(box.style, { position:'fixed', display:'none', border:'2px solid #157347', background:'rgba(21,115,71,.12)', pointerEvents:'none' });
+    Object.assign(hint.style, { position:'fixed', left:'50%', top:'12px', transform:'translateX(-50%)', padding:'8px 12px', borderRadius:'8px', background:'rgba(20,45,35,.92)', color:'#fff', font:'600 13px system-ui', pointerEvents:'none' });
+    hint.textContent = 'Arrastre sobre el área que desea leer · Esc para cancelar';
+    overlay.append(box, hint);
+    document.documentElement.appendChild(overlay);
+    let startPoint = null;
+    const rectFrom = (a,b) => ({ x:Math.min(a.x,b.x), y:Math.min(a.y,b.y), width:Math.abs(b.x-a.x), height:Math.abs(b.y-a.y) });
+    const intersects = (a,b) => a.left < b.x+b.width && a.right > b.x && a.top < b.y+b.height && a.bottom > b.y;
+    const textInside = rect => {
+      const parts = [], walker = document.createTreeWalker(document.body, 4);
+      let node;
+      while ((node = walker.nextNode())) {
+        if (!node.parentElement || overlay.contains(node.parentElement)) continue;
+        const text = String(node.textContent || '').replace(/\s+/g,' ').trim();
+        if (!text) continue;
+        const style = getComputedStyle(node.parentElement);
+        if (style.display === 'none' || style.visibility === 'hidden') continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const hit = [...range.getClientRects()].some(r => intersects(r, rect));
+        range.detach?.();
+        if (hit) parts.push(text);
+      }
+      return parts.join(' ').replace(/\s+/g,' ').trim();
+    };
+    const cleanup = () => { window.removeEventListener('keydown', onKey, true); overlay.remove(); };
+    const finish = value => { cleanup(); resolve(value); };
+    const onKey = event => { if (event.key === 'Escape') finish({ cancelled:true }); };
+    window.addEventListener('keydown', onKey, true);
+    overlay.addEventListener('pointerdown', event => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      event.preventDefault();
+      startPoint = { x:event.clientX, y:event.clientY };
+      overlay.setPointerCapture?.(event.pointerId);
+      box.style.display='block';
+      Object.assign(box.style,{left:`${startPoint.x}px`,top:`${startPoint.y}px`,width:'0px',height:'0px'});
+    });
+    overlay.addEventListener('pointermove', event => {
+      if (!startPoint) return;
+      event.preventDefault();
+      const rect=rectFrom(startPoint,{x:event.clientX,y:event.clientY});
+      Object.assign(box.style,{left:`${rect.x}px`,top:`${rect.y}px`,width:`${rect.width}px`,height:`${rect.height}px`});
+    });
+    overlay.addEventListener('pointerup', event => {
+      if (!startPoint) return;
+      event.preventDefault();
+      const rect=rectFrom(startPoint,{x:event.clientX,y:event.clientY});
+      startPoint=null;
+      if (rect.width < 6 || rect.height < 6) return finish({ cancelled:true, reason:'small' });
+      finish({ cancelled:false, rect, text:textInside(rect), title:document.title||'', url:location.href });
+    });
+  });
+}
+
+async function readRemotePage(context) {
   const { view, caseId, tramite } = context;
-  const selectionOnly = mode === 'selection';
-  const code = `(() => {
-    const selected = (globalThis.getSelection?.().toString() || '').trim();
-    const bodyText = (document.body?.innerText || document.documentElement?.innerText || '').replace(/\\s+/g, ' ').trim();
-    return { text: ${selectionOnly ? 'selected' : 'bodyText'}, title: document.title || '', url: location.href };
-  })()`;
+  const code = `(() => ({ text:(document.body?.innerText || document.documentElement?.innerText || '').replace(/\\s+/g, ' ').trim(), title:document.title || '', url:location.href }))()`;
   const result = await view.webContents.executeJavaScriptInIsolatedWorld(101, [{ code }], true);
   const text = String(result?.text || '').trim();
   if (!text) {
-    const message = selectionOnly ? 'Seleccione el texto del área dentro de la página y vuelva a pulsar Leer área.' : 'La página no contiene texto legible.';
-    sendReaderState(context, { status: message });
-    return { sent: false, reason: 'empty' };
+    sendReaderState(context, { status: 'La página no contiene texto legible.' });
+    return { sent:false, reason:'empty' };
   }
-  if (!mainWindow || mainWindow.isDestroyed()) return { sent: false, reason: 'main-window-missing' };
-  mainWindow.webContents.send('l26:reader-data', {
-    caseId,
-    tramite,
-    text,
-    url: String(result?.url || view.webContents.getURL()),
-    title: String(result?.title || view.webContents.getTitle()),
-    mode: selectionOnly ? 'selection' : 'page',
-  });
-  sendReaderState(context, { status: selectionOnly ? 'Área seleccionada enviada a L-26.' : 'Página enviada a L-26.' });
-  return { sent: true };
+  if (!mainWindow || mainWindow.isDestroyed()) return { sent:false, reason:'main-window-missing' };
+  mainWindow.webContents.send('l26:reader-data', { caseId, tramite, text, url:String(result?.url || view.webContents.getURL()), title:String(result?.title || view.webContents.getTitle()), mode:'page' });
+  sendReaderState(context, { status:'Página enviada a L-26.' });
+  return { sent:true };
+}
+
+function remoteOcrImage(dataUrl) {
+  return (async () => {
+    if (typeof TextDetector !== 'function') return { available:false, text:'' };
+    const image = new Image();
+    image.src = dataUrl;
+    await image.decode();
+    const detector = new TextDetector();
+    const blocks = await detector.detect(image);
+    return { available:true, text:(blocks || []).map(block => String(block.rawValue || '')).filter(Boolean).join('\n') };
+  })();
+}
+
+async function readRemoteArea(context) {
+  const { view, caseId, tramite } = context;
+  sendReaderState(context, { status:'Arrastre un rectángulo sobre el área que desea leer.' });
+  const code = `(${remoteAreaSelector.toString()})()`;
+  const result = await view.webContents.executeJavaScriptInIsolatedWorld(101, [{ code }], true);
+  if (result?.cancelled) {
+    sendReaderState(context, { status:'Lectura de área cancelada.' });
+    return { sent:false, reason:'cancelled' };
+  }
+  let text = String(result?.text || '').trim();
+  let ocrUsed = false;
+  if (!text && result?.rect) {
+    const bounds = view.getBounds();
+    const x=Math.max(0,Math.floor(Number(result.rect.x)||0)), y=Math.max(0,Math.floor(Number(result.rect.y)||0));
+    const width=Math.max(1,Math.min(Math.ceil(Number(result.rect.width)||1),Math.max(1,bounds.width-x)));
+    const height=Math.max(1,Math.min(Math.ceil(Number(result.rect.height)||1),Math.max(1,bounds.height-y)));
+    const image = await view.webContents.capturePage({ x, y, width, height });
+    const dataUrl = image.toDataURL();
+    const ocrCode = `(${remoteOcrImage.toString()})(${JSON.stringify(dataUrl)})`;
+    const ocr = await view.webContents.executeJavaScriptInIsolatedWorld(101, [{ code:ocrCode }], true);
+    text = String(ocr?.text || '').trim();
+    ocrUsed = Boolean(text);
+    if (!text && ocr?.available === false) {
+      sendReaderState(context, { status:'El área no contiene texto seleccionable y OCR no está disponible en este dispositivo.' });
+      return { sent:false, reason:'ocr-unavailable' };
+    }
+  }
+  if (!text) {
+    sendReaderState(context, { status:'No se encontró texto en el área seleccionada.' });
+    return { sent:false, reason:'empty' };
+  }
+  if (!mainWindow || mainWindow.isDestroyed()) return { sent:false, reason:'main-window-missing' };
+  mainWindow.webContents.send('l26:reader-data', { caseId, tramite, text, url:String(result?.url || view.webContents.getURL()), title:String(result?.title || view.webContents.getTitle()), mode:'area', ocr:ocrUsed });
+  sendReaderState(context, { status:ocrUsed?'Área reconocida por OCR y enviada a L-26.':'Área enviada a L-26.' });
+  return { sent:true, ocr:ocrUsed };
 }
 
 function createReaderWindow(rawPayload) {
@@ -229,8 +325,8 @@ ipcMain.on('l26:reader-command', (event, payload) => {
   if (command === 'back' && history.canGoBack()) history.goBack();
   else if (command === 'forward' && history.canGoForward()) history.goForward();
   else if (command === 'reload') view.webContents.reload();
-  else if (command === 'read-page') void readRemotePage(context, 'page').catch(error => sendReaderState(context, { status: `No se pudo leer: ${error.message}` }));
-  else if (command === 'read-selection') void readRemotePage(context, 'selection').catch(error => sendReaderState(context, { status: `No se pudo leer: ${error.message}` }));
+  else if (command === 'read-page') void readRemotePage(context).catch(error => sendReaderState(context, { status: `No se pudo leer: ${error.message}` }));
+  else if (command === 'read-area') void readRemoteArea(context).catch(error => sendReaderState(context, { status: `No se pudo leer el área: ${error.message}` }));
   else if (command === 'close' && !readerWindow.isDestroyed()) readerWindow.close();
 });
 

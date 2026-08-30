@@ -7,7 +7,7 @@ const commandFor = {
   readerForward: 'forward',
   readerReload: 'reload',
   readerReadPage: 'read-page',
-  readerReadArea: 'read-selection',
+  readerReadArea: 'read-area',
   readerClose: 'close',
 };
 
