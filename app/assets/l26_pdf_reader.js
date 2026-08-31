@@ -4,10 +4,12 @@
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.L26PdfReader=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
-  const PDFJS_VERSION='6.2.108';
-  const PDFJS_CACHE=`l26-pdfjs-${PDFJS_VERSION}`;
-  const PDFJS_MODULE_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/build/pdf.min.mjs';
-  const PDFJS_WORKER_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/build/pdf.worker.min.mjs';
+  const PDFJS_VERSION='4.10.38';
+  const PDFJS_CACHE='l26-pdfjs-4.10.38-legacy';
+  const PDFJS_LOCAL_MODULE_URL='./app/assets/vendor/pdfjs/pdf.min.mjs';
+  const PDFJS_LOCAL_WORKER_URL='./app/assets/vendor/pdfjs/pdf.worker.min.mjs';
+  const PDFJS_MODULE_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.min.mjs';
+  const PDFJS_WORKER_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs';
   let active=null,pdfjsPromise=null,moduleBlobUrl='',workerBlobUrl='',sessionCounter=0;
 
   function normalizeRect(rect){
@@ -38,6 +40,22 @@
     return lines.map(line=>line.parts.join(' ').replace(/\s+/g,' ').trim()).filter(Boolean).join('\n');
   }
 
+  function installTypedArrayCompatibility(){
+    if(typeof Uint8Array==='undefined')return;
+    if(typeof Uint8Array.prototype.toHex!=='function'){
+      Object.defineProperty(Uint8Array.prototype,'toHex',{configurable:true,writable:true,value:function(){
+        let out='';for(let i=0;i<this.length;i++)out+=this[i].toString(16).padStart(2,'0');return out;
+      }});
+    }
+    if(typeof Uint8Array.fromHex!=='function'){
+      Object.defineProperty(Uint8Array,'fromHex',{configurable:true,writable:true,value:function(value){
+        const hex=String(value||'').replace(/\s+/g,'');
+        if(hex.length%2||!/^[0-9a-f]*$/i.test(hex))throw new SyntaxError('Cadena hexadecimal inválida.');
+        const out=new Uint8Array(hex.length/2);for(let i=0;i<out.length;i++)out[i]=parseInt(hex.slice(i*2,i*2+2),16);return out;
+      }});
+    }
+  }
+
   function browserReady(){return Boolean(root&&root.document&&root.Blob&&root.URL&&root.fetch)}
   function byId(id){return root?.document?.getElementById(id)||null}
   function setStatus(message,kind=''){
@@ -61,11 +79,22 @@
     return response.text();
   }
 
+  async function fetchFirstAvailable(localUrl,remoteUrl){
+    try{return await fetchCachedText(localUrl)}catch(localError){
+      console.warn('Motor PDF local no disponible; se usará la copia remota compatible.',localError?.message||localError);
+      return fetchCachedText(remoteUrl);
+    }
+  }
+
   async function loadPdfJs(){
     if(!browserReady())throw new Error('El lector PDF solo puede ejecutarse en el navegador.');
     if(pdfjsPromise)return pdfjsPromise;
     pdfjsPromise=(async()=>{
-      const [moduleSource,workerSource]=await Promise.all([fetchCachedText(PDFJS_MODULE_URL),fetchCachedText(PDFJS_WORKER_URL)]);
+      installTypedArrayCompatibility();
+      const [moduleSource,workerSource]=await Promise.all([
+        fetchFirstAvailable(PDFJS_LOCAL_MODULE_URL,PDFJS_MODULE_URL),
+        fetchFirstAvailable(PDFJS_LOCAL_WORKER_URL,PDFJS_WORKER_URL)
+      ]);
       moduleBlobUrl=URL.createObjectURL(new Blob([moduleSource],{type:'text/javascript'}));
       workerBlobUrl=URL.createObjectURL(new Blob([workerSource],{type:'text/javascript'}));
       const pdfjs=await import(moduleBlobUrl);

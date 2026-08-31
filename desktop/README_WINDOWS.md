@@ -33,3 +33,17 @@ Esta envoltura no usa GitHub para autoactualizarse. Una actualización se distri
 
 ## Lector web interno de enlaces
 En la versión Windows, el botón **Abrir enlace** abre una ventana propia de L-26. Desde esa ventana se puede navegar y usar **Leer página** o **Leer selección** para enviar texto al expediente asociado. El número de trámite del expediente permanece protegido y no se reemplaza por el contenido leído.
+
+## Abrir L-26 realmente como aplicación de escritorio
+
+Para que **Abrir enlace**, **Leer página** y **Leer área** funcionen dentro de una ventana propia de L-26, no abra `index.html` con Chrome o Edge.
+
+Desde la raíz del paquete haga doble clic en:
+
+`ABRIR_L26_WINDOWS.cmd`
+
+En la primera apertura el lanzador ejecuta `npm install` únicamente si el motor Electron todavía no está preparado y después ejecuta `npm start`. Las aperturas siguientes reutilizan la instalación existente.
+
+Si `index.html` se abre accidentalmente en Chrome/Edge en Windows, L-26 ya no enviará el enlace a otra pestaña de Chrome: mostrará un aviso para abrir el modo escritorio.
+
+**Datos existentes:** Chrome/Edge y Electron usan perfiles de almacenamiento distintos. Si sus expedientes actuales viven en el navegador, exporte un respaldo antes de comenzar a trabajar de forma permanente en la versión de escritorio e impórtelo allí. No borre los datos del navegador hasta comprobar el respaldo.
