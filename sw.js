@@ -1,14 +1,14 @@
-const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1-conformidad-v1-windows-desktop-launch-v1-pdf-compat-v1-compact-districts-v1';
+const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1-conformidad-v1-windows-desktop-launch-v1-pdf-compat-v1-compact-districts-v1-android-offline-pdf-ocr-v1';
 const CORE=['./','./index.html','./app/index.html','./app/assets/import_rules.js','./app/assets/l26_integrity_core.js','./app/assets/l26_management_core.js','./app/assets/l26_territory_core.js','./app/assets/l26_reader_apply_core.js','./app/assets/l26_excel_import_core.js','./app/assets/l26_croquis_core.js','./app/assets/l26_filter_core.js','./app/assets/l26_pdf_reader.js','./manifest.webmanifest','./favicon-48.png','./apple-touch-icon.png','./icon-192.png','./icon-512.png','./icon-maskable-192.png','./icon-maskable-512.png'];
 const PDFJS_CACHE='l26-pdfjs-4.10.38-legacy';
-const PDFJS_ASSETS=['./app/assets/vendor/pdfjs/pdf.min.mjs','./app/assets/vendor/pdfjs/pdf.worker.min.mjs','https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.min.mjs','https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs'];
+const PDFJS_ASSETS=['./app/assets/vendor/pdfjs/pdf.min.mjs','./app/assets/vendor/pdfjs/pdf.worker.min.mjs'];
 async function prewarmPdfJs(){
   try{
     const cache=await caches.open(PDFJS_CACHE);
     await Promise.all(PDFJS_ASSETS.map(async url=>{
       if(await cache.match(url))return;
       try{
-        const response=await fetch(url,{mode:'cors',cache:'reload'});
+        const response=await fetch(url,{cache:'reload'});
         if(response?.ok)await cache.put(url,response.clone());
       }catch(error){console.warn('Motor PDF pendiente de precarga:',url,error?.message||error)}
     }));

@@ -6,7 +6,8 @@ def test_operational_location_module_no_longer_uses_expediente_heading():
     assert '<div class="nav-title">Expediente de campo</div>' not in HTML
     assert '<div class="nav-title">Ubicación</div>' in HTML
     assert '<h2>Expediente municipal de inspección</h2>' not in HTML
-    assert '<h2>Ubicación de la inspección</h2>' in HTML
+    assert '<h2>Información General</h2>' in HTML
+    assert '<h3>Ubicación de la inspección</h3>' in HTML
 
 def test_legal_report_expediente_wording_is_preserved():
     assert 'EXPEDIENTE / TRÁMITE' in HTML

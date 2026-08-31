@@ -1,0 +1,29 @@
+L-26 — AUDITORÍA ANDROID OFFLINE PDF + OCR — 2026-08-30
+
+ALCANCE
+- Android teléfono/tablet: funciones locales operativas sin conexión.
+- Lector PDF: PDF.js 4.10.38 legacy incluido dentro del APK durante el build.
+- Recursos PDF obligatorios: motor, worker, CMaps y fuentes estándar.
+- PDF escaneado Android: OCR latino ML Kit bundled com.google.mlkit:text-recognition:16.0.1.
+- No se usa play-services-mlkit-text-recognition (modelo descargable).
+- El runtime PDF no tiene fallback CDN.
+- El build Android se detiene si faltan recursos PDF locales.
+- Las páginas web externas nuevas requieren conexión por su propia naturaleza.
+
+CAMBIOS PENDIENTES CONSOLIDADOS
+- Encabezado operativo: Información General.
+- Subbloque GPS conserva: Ubicación de la inspección.
+- El modo Web/PWA de Windows ya no afirma falsamente que Chrome está abierto.
+
+VERIFICACIÓN FINAL ANTES DE EMPAQUETAR
+- pytest: 175 passed, 1 skipped.
+- Node autocontenido: 62 passed.
+- Desktop: 11 passed.
+- Workflows YAML: ci/windows/android/release válidos.
+- Contrato offline: sin CDN PDF.js en runtime; OCR Android bundled presente.
+
+LIMITACIÓN DEL ENTORNO DE ESTA ENTREGA
+El entorno local de construcción no tiene acceso de red al registro npm/Gradle,
+por lo que aquí no se generó el APK binario. Los workflows de GitHub ejecutan
+vendor_pdfjs.py --required antes del build y no publican el APK si no pueden
+incluir los recursos PDF obligatorios.

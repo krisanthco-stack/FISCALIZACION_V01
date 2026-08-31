@@ -573,7 +573,7 @@ details.inline-accordion[open]>summary:after,.fiscal-construction-accordion[open
 <nav id="desktopNav">
   <div class="nav-title">Ubicación</div>
   <a class="nav-btn active" href="#database" data-target="database"><span class="nav-num">1</span> Trámites de Fiscalización</a>
-  <a class="nav-btn" href="#general" data-target="general"><span class="nav-num">2</span> Ubicación de la inspección</a>
+  <a class="nav-btn" href="#general" data-target="general"><span class="nav-num">2</span> Información General</a>
   <a class="nav-btn" href="#terrain" data-target="terrain"><span class="nav-num">3</span> Terreno y entorno</a>
   <a class="nav-btn" href="#construction" data-target="construction"><span class="nav-num">4</span> Construcciones</a>
   <a class="nav-btn" href="#photos" data-target="photos"><span class="nav-num">5</span> Fotografías</a>
@@ -623,7 +623,7 @@ details.inline-accordion[open]>summary:after,.fiscal-construction-accordion[open
 
 <section class="view" id="view-general">
     <div class="hero">
-      <div><h2>Ubicación de la inspección</h2><p>Capture, documente y exporte cada trámite desde una interfaz diseñada para el trabajo de campo.</p></div>
+      <div><h2>Información General</h2><p>Capture, documente y exporte cada trámite desde una interfaz diseñada para el trabajo de campo.</p></div>
       <div class="meta"><b id="caseCode">CASO NUEVO</b><br><span id="clock"></span><br><span id="saveState">Sin guardar</span></div>
     </div>
     <div class="card">
@@ -1566,7 +1566,7 @@ async function openCaseSource(c){
   }
   const windowsBrowser=/Windows/i.test(String(navigator.userAgent||navigator.platform||''));
   if(windowsBrowser){
-    return toast('L-26 esta abierto en Chrome/Edge. Cierre esta pestaña y ejecute ABRIR_L26_WINDOWS.cmd para usar el lector interno.');
+    return toast('L-26 está ejecutándose en modo Web/PWA. Para usar el lector interno de enlaces en Windows, abra la aplicación de escritorio instalada.');
   }
   window.open(c.sourceLink,'_blank','noopener,noreferrer');
 }

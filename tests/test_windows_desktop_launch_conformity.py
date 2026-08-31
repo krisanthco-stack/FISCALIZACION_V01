@@ -22,7 +22,8 @@ def test_windows_browser_mode_does_not_silently_open_source_in_chrome():
     fn = HTML[start:end]
     assert 'window.l26Desktop?.openSource' in fn
     assert 'navigator.userAgent' in fn or 'navigator.platform' in fn
-    assert 'ABRIR_L26_WINDOWS.cmd' in fn
+    assert 'aplicación de escritorio instalada' in fn
+    assert 'esta abierto en Chrome/Edge' not in fn
     assert "window.open(c.sourceLink,'_blank'" in fn, 'Se conserva fallback para plataformas no Windows'
 
 
