@@ -10,7 +10,7 @@ class BaselineRegression(unittest.TestCase):
         self.assertRegex(HTML, r'#desktopNav \.nav-btn\{[^}]*width:auto!important')
         labels=re.findall(r'<a class="nav-btn(?: active)?"[^>]*data-target="[^"]+"[^>]*>.*?</span>\s*([^<]+)</a>',HTML,re.S)
         self.assertEqual([x.strip() for x in labels[:8]],[
-            'Trámites de Fiscalización','Ubicación de la inspección','Terreno y entorno','Construcciones','Fotografías','Fiscalización','Informes','Gestión'])
+            'Trámites de Fiscalización','Información General','Terreno y entorno','Construcciones','Fotografías','Fiscalización','Informes','Gestión'])
 
     def test_v27_accordion_features_preserved(self):
         for token in ['details.module-accordion','details.inline-accordion','persistent-selection-accordion','district-accordion-summary','place-accordion-summary','enforceExclusiveAccordion','refreshPersistentAccordionSummaries']:

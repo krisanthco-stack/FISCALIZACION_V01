@@ -6,12 +6,14 @@ import shutil
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'android/app/src/main/assets/www'
 ROOT_FILES = [
-    'index.html', 'sw.js', 'manifest.webmanifest', 'favicon-48.png',
+    'index.html', 'app/index.html', 'sw.js', 'manifest.webmanifest', 'favicon-48.png',
     'apple-touch-icon.png', 'icon-192.png', 'icon-512.png',
     'icon-maskable-192.png', 'icon-maskable-512.png',
 ]
 ROOT_DIRS = ['app/assets', 'templates', 'config']
 EXCLUDED_NAMES = {'desktop', 'tests', 'audit', 'control', 'release', 'docs', '.github', 'android'}
+PDF_RUNTIME = ROOT / 'app/assets/vendor/pdfjs'
+PDF_REQUIRED = [PDF_RUNTIME / 'pdf.min.mjs', PDF_RUNTIME / 'pdf.worker.min.mjs', PDF_RUNTIME / 'cmaps', PDF_RUNTIME / 'standard_fonts']
 
 
 def copy_file(src: Path, dst: Path):
@@ -20,6 +22,9 @@ def copy_file(src: Path, dst: Path):
 
 
 def main():
+    missing = [str(path.relative_to(ROOT)) for path in PDF_REQUIRED if not path.exists()]
+    if missing:
+        raise SystemExit('No se puede construir el APK offline; faltan recursos PDF locales: ' + ', '.join(missing))
     if DEST.exists():
         shutil.rmtree(DEST)
     DEST.mkdir(parents=True)

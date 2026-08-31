@@ -8,8 +8,8 @@
   const PDFJS_CACHE='l26-pdfjs-4.10.38-legacy';
   const PDFJS_LOCAL_MODULE_URL='./app/assets/vendor/pdfjs/pdf.min.mjs';
   const PDFJS_LOCAL_WORKER_URL='./app/assets/vendor/pdfjs/pdf.worker.min.mjs';
-  const PDFJS_MODULE_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.min.mjs';
-  const PDFJS_WORKER_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs';
+  const PDFJS_CMAP_URL='./app/assets/vendor/pdfjs/cmaps/';
+  const PDFJS_STANDARD_FONT_URL='./app/assets/vendor/pdfjs/standard_fonts/';
   let active=null,pdfjsPromise=null,moduleBlobUrl='',workerBlobUrl='',sessionCounter=0;
 
   function normalizeRect(rect){
@@ -63,27 +63,18 @@
     host.textContent=String(message||'');host.className=`notice${kind?` ${kind}`:''}`;
   }
 
-  async function fetchCachedText(url){
+  async function fetchLocalText(url){
+    let response=null;
     if(typeof root.caches!=='undefined'){
       const cache=await caches.open(PDFJS_CACHE);
-      let response=await cache.match(url);
+      response=await cache.match(url);
       if(!response){
-        response=await fetch(url,{mode:'cors',cache:'force-cache'});
-        if(!response.ok)throw new Error(`No se pudo descargar el motor PDF (${response.status}).`);
-        await cache.put(url,response.clone());
+        response=await fetch(url,{cache:'force-cache'});
+        if(response?.ok)await cache.put(url,response.clone());
       }
-      return response.text();
-    }
-    const response=await fetch(url,{mode:'cors',cache:'force-cache'});
-    if(!response.ok)throw new Error(`No se pudo descargar el motor PDF (${response.status}).`);
+    }else response=await fetch(url,{cache:'force-cache'});
+    if(!response?.ok)throw new Error('El motor PDF offline no está incluido en esta instalación. Actualice/reinstale L-26.');
     return response.text();
-  }
-
-  async function fetchFirstAvailable(localUrl,remoteUrl){
-    try{return await fetchCachedText(localUrl)}catch(localError){
-      console.warn('Motor PDF local no disponible; se usará la copia remota compatible.',localError?.message||localError);
-      return fetchCachedText(remoteUrl);
-    }
   }
 
   async function loadPdfJs(){
@@ -92,8 +83,8 @@
     pdfjsPromise=(async()=>{
       installTypedArrayCompatibility();
       const [moduleSource,workerSource]=await Promise.all([
-        fetchFirstAvailable(PDFJS_LOCAL_MODULE_URL,PDFJS_MODULE_URL),
-        fetchFirstAvailable(PDFJS_LOCAL_WORKER_URL,PDFJS_WORKER_URL)
+        fetchLocalText(PDFJS_LOCAL_MODULE_URL),
+        fetchLocalText(PDFJS_LOCAL_WORKER_URL)
       ]);
       moduleBlobUrl=URL.createObjectURL(new Blob([moduleSource],{type:'text/javascript'}));
       workerBlobUrl=URL.createObjectURL(new Blob([workerSource],{type:'text/javascript'}));
@@ -102,6 +93,24 @@
       return pdfjs;
     })().catch(error=>{pdfjsPromise=null;throw error});
     return pdfjsPromise;
+  }
+
+  function pdfDocumentOptions(data){
+    return {data,isEvalSupported:false,cMapUrl:PDFJS_CMAP_URL,cMapPacked:true,standardFontDataUrl:PDFJS_STANDARD_FONT_URL};
+  }
+
+  function androidOcrAvailable(){return typeof root?.L26Android?.ocrImage==='function'}
+  async function ocrCanvas(canvas){
+    if(androidOcrAvailable()){
+      const dataUrl=canvas.toDataURL('image/jpeg',.92);
+      return String(root.L26Android.ocrImage(dataUrl)||'').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+    }
+    if(typeof root?.TextDetector!=='function')return '';
+    const detector=new root.TextDetector(),source=typeof root.createImageBitmap==='function'?await root.createImageBitmap(canvas):canvas;
+    try{
+      const blocks=await detector.detect(source);
+      return (blocks||[]).map(block=>String(block?.rawValue||block?.text||'').trim()).filter(Boolean).join('\n');
+    }finally{source?.close?.()}
   }
 
   async function extractTextFromPdf(pdf,options={}){
@@ -120,19 +129,17 @@
   async function extractOcrTextFromPdf(pdf,options={}){
     const total=Math.max(0,Number(pdf?.numPages)||0);
     if(!pdf||typeof pdf.getPage!=='function')throw new Error('No se recibió un documento PDF válido para OCR.');
-    if(typeof root?.TextDetector!=='function'||!root?.document)return{text:'',hasText:false,pagesRead:0,totalPages:total,ocr:true,ocrAvailable:false};
-    const detector=new root.TextDetector(),requested=Number(options.ocrMaxPages)||Number(options.maxPages)||total||1,limit=Math.max(1,Math.min(total||1,requested)),pages=[];
+    if(!root?.document)return{text:'',hasText:false,pagesRead:0,totalPages:total,ocr:true,ocrAvailable:false};
+    const ocrAvailable=androidOcrAvailable()||typeof root?.TextDetector==='function';
+    if(!ocrAvailable)return{text:'',hasText:false,pagesRead:0,totalPages:total,ocr:true,ocrAvailable:false};
+    const requested=Number(options.ocrMaxPages)||Number(options.maxPages)||total||1,limit=Math.max(1,Math.min(total||1,requested)),pages=[];
     for(let pageNo=1;pageNo<=limit;pageNo++){
       options.onProgress?.({page:pageNo,total,ocr:true});
       const page=await pdf.getPage(pageNo),viewport=page.getViewport({scale:Math.max(1.25,Math.min(2,Number(options.ocrScale)||1.6))}),canvas=root.document.createElement('canvas');
       canvas.width=Math.max(1,Math.ceil(viewport.width));canvas.height=Math.max(1,Math.ceil(viewport.height));
       const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
       await page.render({canvasContext:ctx,viewport}).promise;
-      const source=typeof root.createImageBitmap==='function'?await root.createImageBitmap(canvas):canvas;
-      try{
-        const blocks=await detector.detect(source),text=(blocks||[]).map(block=>String(block?.rawValue||block?.text||'').replace(/\s+/g,' ').trim()).filter(Boolean).join(' ');
-        if(text)pages.push(text);
-      }finally{source?.close?.();canvas.width=1;canvas.height=1}
+      try{const text=await ocrCanvas(canvas);if(text)pages.push(text)}finally{canvas.width=1;canvas.height=1}
     }
     const text=pages.join('\n\n').trim();
     return{text,hasText:Boolean(text),pagesRead:limit,totalPages:total,ocr:true,ocrAvailable:true};
@@ -140,7 +147,7 @@
 
   async function extractDocumentText(blob,options={}){
     if(!blob)throw new Error('No se recibió el PDF para leer.');
-    const pdfjs=await loadPdfJs(),bytes=new Uint8Array(await blob.arrayBuffer()),task=pdfjs.getDocument({data:bytes,isEvalSupported:false});
+    const pdfjs=await loadPdfJs(),bytes=new Uint8Array(await blob.arrayBuffer()),task=pdfjs.getDocument(pdfDocumentOptions(bytes));
     let pdf=null;
     try{
       pdf=await task.promise;
@@ -249,18 +256,13 @@
   function hideSelection(){const overlay=byId('pdfViewerSelection');if(overlay){overlay.hidden=true;overlay.style.width='0';overlay.style.height='0'}}
 
   async function ocrSelectedArea(a,rect){
-    if(typeof root.TextDetector!=='function')throw new Error('La zona parece ser una imagen. Este navegador no ofrece OCR local; pruebe en un Chrome/Android actualizado o seleccione texto digital.');
+    if(!androidOcrAvailable()&&typeof root.TextDetector!=='function')throw new Error('Esta instalación no dispone de OCR local.');
     const canvas=byId('pdfViewerCanvas');if(!canvas)throw new Error('No se encontró la página para OCR.');
     const cssWidth=parseFloat(canvas.style.width)||canvas.clientWidth||1,cssHeight=parseFloat(canvas.style.height)||canvas.clientHeight||1;
     const sx=Math.max(0,Math.floor(rect.x*canvas.width/cssWidth)),sy=Math.max(0,Math.floor(rect.y*canvas.height/cssHeight));
     const sw=Math.max(1,Math.min(canvas.width-sx,Math.ceil(rect.width*canvas.width/cssWidth))),sh=Math.max(1,Math.min(canvas.height-sy,Math.ceil(rect.height*canvas.height/cssHeight)));
     const crop=root.document.createElement('canvas');crop.width=sw;crop.height=sh;crop.getContext('2d').drawImage(canvas,sx,sy,sw,sh,0,0,sw,sh);
-    const detector=new root.TextDetector();
-    const source=typeof root.createImageBitmap==='function'?await root.createImageBitmap(crop):crop;
-    try{
-      const blocks=await detector.detect(source);
-      return (blocks||[]).map(block=>String(block.rawValue||block.text||'').trim()).filter(Boolean).join('\n');
-    }finally{source?.close?.()}
+    try{return await ocrCanvas(crop)}finally{crop.width=1;crop.height=1}
   }
 
   async function finishAreaSelection(a,rect){
@@ -314,7 +316,7 @@
     try{
       a.pdfjs=await loadPdfJs();if(!active||active.token!==token)return null;
       const bytes=new Uint8Array(await options.blob.arrayBuffer());if(!active||active.token!==token)return null;
-      const task=a.pdfjs.getDocument({data:bytes,isEvalSupported:false});
+      const task=a.pdfjs.getDocument(pdfDocumentOptions(bytes));
       a.pdf=await task.promise;if(!active||active.token!==token){a.pdf?.destroy?.();return null;}
       await renderPage();if(a.startSelection&&active===a)enableAreaSelection(a);return a;
     }catch(error){

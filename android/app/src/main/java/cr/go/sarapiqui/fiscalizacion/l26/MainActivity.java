@@ -6,6 +6,8 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -24,10 +26,18 @@ import android.widget.Toast;
 
 import org.json.JSONObject;
 
+import com.google.android.gms.tasks.Tasks;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.Text;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLConnection;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends Activity {
     private static final String APP_HOST = "appassets.androidplatform.net";
@@ -40,6 +50,7 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileCallback;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
+    private TextRecognizer offlineTextRecognizer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +61,7 @@ public class MainActivity extends Activity {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
         setContentView(root);
+        offlineTextRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
         configureTrustedAppWebView();
         webView.loadUrl(APP_URL);
     }
@@ -201,6 +213,20 @@ public class MainActivity extends Activity {
         else super.onBackPressed();
     }
 
+    @Override
+    protected void onDestroy() {
+        if (offlineTextRecognizer != null) {
+            offlineTextRecognizer.close();
+            offlineTextRecognizer = null;
+        }
+        if (webView != null) {
+            webView.removeJavascriptInterface("L26Android");
+            webView.destroy();
+            webView = null;
+        }
+        super.onDestroy();
+    }
+
     private final class TrustedL26Bridge {
         @JavascriptInterface
         public void openSource(String json) {
@@ -212,6 +238,29 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> openReader(url, caseId, tramite));
             } catch (Exception error) {
                 runOnUiThread(() -> Toast.makeText(MainActivity.this, "No se pudo abrir el lector interno.", Toast.LENGTH_LONG).show());
+            }
+        }
+
+
+        @JavascriptInterface
+        public String ocrImage(String dataUrl) {
+            Bitmap bitmap = null;
+            try {
+                int comma = dataUrl == null ? -1 : dataUrl.indexOf(',');
+                if (comma < 0) return "";
+                byte[] bytes = Base64.decode(dataUrl.substring(comma + 1), Base64.DEFAULT);
+                bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                if (bitmap == null) return "";
+                InputImage image = InputImage.fromBitmap(bitmap, 0);
+                if (offlineTextRecognizer == null) {
+                    offlineTextRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+                }
+                Text result = Tasks.await(offlineTextRecognizer.process(image), 25, TimeUnit.SECONDS);
+                return result == null ? "" : result.getText();
+            } catch (Exception error) {
+                return "";
+            } finally {
+                if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
             }
         }
 

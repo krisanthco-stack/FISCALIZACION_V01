@@ -48,3 +48,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
+
+
+dependencies {
+    // Modelo latino incluido físicamente en el APK: no se descarga al primer uso.
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+}
