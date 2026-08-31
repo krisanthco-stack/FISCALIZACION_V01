@@ -1,0 +1,29 @@
+FISCALIZACION L26 - ABRIR EN WINDOWS COMO APLICACION DE ESCRITORIO
+==================================================================
+
+IMPORTANTE
+NO abra index.html con Chrome o Edge si desea usar:
+- Abrir enlace dentro de L-26
+- Leer pagina
+- Leer area
+
+PARA ABRIR L26 EN MODO ESCRITORIO
+1. Descomprima TODO el ZIP en una carpeta.
+2. Haga doble clic en: ABRIR_L26_WINDOWS.cmd
+3. La primera vez, L26 prepara automaticamente Electron con npm.
+4. Cuando aparezca la ventana "Fiscalizacion Bienes Inmuebles L-26", ya esta en modo escritorio.
+5. Desde un expediente pulse "Abrir enlace". La pagina debe aparecer en una ventana de L-26, no en Chrome.
+
+DATOS EXISTENTES
+Chrome/Edge y la aplicacion Electron usan perfiles de almacenamiento diferentes.
+Si actualmente tiene expedientes importantes en Chrome/Edge:
+- NO borre esos datos.
+- Exporte respaldos/paquetes antes de trabajar permanentemente en modo escritorio.
+- Compruebe la importacion en escritorio antes de retirar la version anterior.
+
+SI SE ABRE index.html EN WINDOWS
+L26 ya no enviara el enlace silenciosamente a Chrome. Mostrara un aviso indicando que debe abrir ABRIR_L26_WINDOWS.cmd.
+
+PRIMERA APERTURA
+Requiere Internet para descargar Electron si todavia no esta preparado en la carpeta desktop.
+Las siguientes aperturas reutilizan esa instalacion.

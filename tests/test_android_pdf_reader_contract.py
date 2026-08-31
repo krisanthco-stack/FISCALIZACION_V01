@@ -32,8 +32,9 @@ READER = (ROOT / 'app/assets/l26_pdf_reader.js').read_text(encoding='utf-8')
 
 
 def test_pdfjs_is_loaded_lazily_and_cached():
-    assert 'pdfjs-dist@6.2.108/build/pdf.min.mjs' in READER
-    assert 'pdfjs-dist@6.2.108/build/pdf.worker.min.mjs' in READER
+    assert 'pdfjs-dist@4.10.38/legacy/build/pdf.min.mjs' in READER
+    assert 'pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs' in READER
+    assert 'pdfjs-dist@6.2.108' not in READER
     assert 'caches.open(PDFJS_CACHE)' in READER
     assert 'GlobalWorkerOptions.workerSrc' in READER
 

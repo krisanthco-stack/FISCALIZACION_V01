@@ -49,3 +49,7 @@ La entrega incluye ahora una aplicación HTML offline:
 - `Fiscalizacion_BI_V27_FINAL.html` — entrada alternativa con nombre explícito.
 
 La aplicación conserva el contrato funcional accesible de V26–V27: GESTIÓN con importación/exportación JSON, FISCALIZACIÓN, INFORMES con exactamente dos salidas y AUDITORÍA. Los DOCX se generan en el navegador usando copias parametrizadas de los dos machotes oficiales, sin servicios externos.
+
+## Distribución Windows y Android desde GitHub
+
+La configuración automática de instalación está documentada en [`GITHUB_DISTRIBUCION_WINDOWS_ANDROID.md`](GITHUB_DISTRIBUCION_WINDOWS_ANDROID.md). GitHub Actions ejecuta las pruebas, incluye el motor PDF compatible y genera el instalador Windows y el APK Android.

@@ -1,0 +1,14 @@
+L-26 — CAMBIO UI DISTRITOS COMPACTOS — 2026-08-30
+
+Alcance aprobado:
+- Aplicado en Trámites/Fiscalización y Gestión.
+- Los distritos se muestran como tarjetas compactas horizontales.
+- En pantalla ancha caben hasta 6 distritos por fila (5 distritos + Sin distrito).
+- En pantallas medianas: 3 por fila.
+- En celular/pantalla angosta: 2 por fila.
+- El contador por distrito se muestra como número pequeño.
+- Al abrir un distrito, su contenido ocupa el ancho completo y conserva los mismos acordeones de Lugar/Poblado y expedientes.
+- No cambia identidad, datos, filtros, estados, Gestión, PDF, croquis ni IndexedDB.
+- Se actualizó la clave de caché del Service Worker para evitar conservar el diseño anterior.
+
+Pruebas específicas: tests/test_compact_district_layout.py

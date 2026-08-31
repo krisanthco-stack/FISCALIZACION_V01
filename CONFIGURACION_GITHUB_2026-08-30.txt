@@ -1,0 +1,30 @@
+FISCALIZACIÓN L26 - REPOSITORIO GITHUB WINDOWS + ANDROID
+Fecha: 2026-08-30
+
+CONFIGURADO
+- GitHub Actions CI en cada push/PR.
+- Build automático Windows: Setup.exe + Portable.exe.
+- Build automático Android: APK de prueba en push a main.
+- Release automático por tag vMAJOR.MINOR.PATCH.
+- APK oficial firmado con clave estable mediante GitHub Secrets.
+- Versión de Windows/Android tomada automáticamente del tag.
+- PDF.js fijado a 4.10.38 legacy con compatibilidad toHex/fromHex.
+- Build Windows y Android exige incluir PDF.js local antes de empaquetar.
+- Dos fuentes de descarga para PDF.js; si ambas fallan, no se publica un instalador incompleto.
+- Android usa WebView propio para L-26 y ReaderActivity para enlaces externos.
+- Windows usa Electron y lector web interno.
+
+PDF
+- Windows y Android empaquetan app/assets/vendor/pdfjs/pdf.min.mjs y pdf.worker.min.mjs.
+- PDF con texto digital: extracción automática.
+- PDF adjunto: completa solamente campos vacíos; el número de trámite está protegido.
+- PDF escaneado: OCR local se intenta si TextDetector está disponible en el dispositivo.
+
+PARA RELEASE ANDROID OFICIAL
+Configurar en Settings > Secrets and variables > Actions:
+L26_ANDROID_KEYSTORE_BASE64
+L26_ANDROID_KEYSTORE_PASSWORD
+L26_ANDROID_KEY_ALIAS
+L26_ANDROID_KEY_PASSWORD
+
+Ver GITHUB_DISTRIBUCION_WINDOWS_ANDROID.md.
