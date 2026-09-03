@@ -1,0 +1,124 @@
+name: L26 - Publicar versión
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependencias de pruebas
+        run: python -m pip install --upgrade pytest lxml
+      - name: Pruebas de regresión
+        run: python scripts/run_ci.py
+      - name: Aplicar versión del tag
+        run: python scripts/set_release_version.py "$GITHUB_REF_NAME"
+      - name: Incluir motor PDF compatible offline
+        run: python scripts/vendor_pdfjs.py --required
+      - name: Verificar fuente única antes del build Windows
+        run: python scripts/distribution_parity.py
+      - name: Instalar Electron y constructor
+        working-directory: desktop
+        run: npm install --no-audit --no-fund --prefer-offline
+      - name: Construir Windows
+        working-directory: desktop
+        run: npm run dist:win
+      - name: Verificar runtime empaquetado Windows
+        run: python scripts/verify_packaged_runtime.py --windows desktop/dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: |
+            desktop/dist/Fiscalizacion-L26-Setup-*.exe
+            desktop/dist/Fiscalizacion-L26-Portable-*.exe
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.5.0
+      - name: Preparar Android SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"
+      - name: Instalar dependencias de pruebas
+        run: python -m pip install --upgrade pytest lxml
+      - name: Pruebas de regresión
+        run: python scripts/run_ci.py
+      - name: Aplicar versión del tag
+        run: python scripts/set_release_version.py "$GITHUB_REF_NAME"
+      - name: Incluir motor PDF compatible offline
+        run: python scripts/vendor_pdfjs.py --required
+      - name: Sincronizar runtime L-26
+        run: python scripts/sync_android_assets.py
+      - name: Verificar paridad del runtime Android
+        run: python scripts/distribution_parity.py --tree android/app/src/main/assets/www
+      - name: Preparar firma estable Android
+        env:
+          L26_ANDROID_KEYSTORE_BASE64: ${{ secrets.L26_ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$L26_ANDROID_KEYSTORE_BASE64" || (echo "Falta secret L26_ANDROID_KEYSTORE_BASE64" && exit 1)
+          echo "$L26_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/l26-release.jks"
+      - name: Construir Android firmado
+        env:
+          L26_ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/l26-release.jks
+          L26_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.L26_ANDROID_KEYSTORE_PASSWORD }}
+          L26_ANDROID_KEY_ALIAS: ${{ secrets.L26_ANDROID_KEY_ALIAS }}
+          L26_ANDROID_KEY_PASSWORD: ${{ secrets.L26_ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$L26_ANDROID_KEYSTORE_PASSWORD" || (echo "Falta secret L26_ANDROID_KEYSTORE_PASSWORD" && exit 1)
+          test -n "$L26_ANDROID_KEY_ALIAS" || (echo "Falta secret L26_ANDROID_KEY_ALIAS" && exit 1)
+          test -n "$L26_ANDROID_KEY_PASSWORD" || (echo "Falta secret L26_ANDROID_KEY_PASSWORD" && exit 1)
+          gradle --no-daemon -p android assembleRelease
+      - name: Verificar runtime offline dentro del APK
+        run: python scripts/verify_packaged_runtime.py --android android/app/build/outputs/apk/release/app-release.apk
+      - name: Preparar APK
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk dist/Fiscalizacion-L26-Android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: dist/Fiscalizacion-L26-Android.apk
+          if-no-files-found: error
+
+  release:
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+      - name: Crear GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --title "Fiscalización L26 $GITHUB_REF_NAME" --generate-notes
+          find release-assets -type f -print0 | while IFS= read -r -d '' file; do
+            gh release upload "$GITHUB_REF_NAME" "$file" --clobber
+          done
