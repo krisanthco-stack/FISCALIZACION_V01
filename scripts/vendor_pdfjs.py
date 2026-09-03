@@ -8,7 +8,7 @@ import tempfile
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-DEST = ROOT / 'app' / 'assets' / 'vendor' / 'pdfjs'
+DEST = ROOT / 'app' / 'assets' / 'vendor' / 'pdfjs-4.10.38-legacy'
 VERSION = '4.10.38'
 ARCHIVE_NAME = 'pdfjs-dist-4.10.38.tgz'
 ARCHIVE_URLS = [
