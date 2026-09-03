@@ -21,5 +21,9 @@
     const year=String(selectedYear||'').trim();
     return year?list.filter(item=>caseTramiteYear(item)===year):list.slice();
   }
-  return{caseTramiteYear,yearEntries,filterByYear};
+  function filterByAlarm(cases,alarmOnly=false,needsAlarm=()=>false){
+    const list=Array.isArray(cases)?cases:[];
+    return alarmOnly?list.filter(item=>Boolean(needsAlarm(item))):list.slice();
+  }
+  return{caseTramiteYear,yearEntries,filterByYear,filterByAlarm};
 });

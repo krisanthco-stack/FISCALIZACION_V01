@@ -3,6 +3,7 @@ package cr.go.sarapiqui.fiscalizacion.l26;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -26,6 +27,12 @@ public class ReaderActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String caseId = "";
     private String tramite = "";
+    private static final long MINIMUM_READY_MS = 3000L;
+    private static final long CONTENT_STABLE_MS = 1500L;
+    private boolean pageLoading = true;
+    private long pageReadyAt = 0L;
+    private String lastContentSignature = "";
+    private long contentStableAt = 0L;
 
     private static final String AREA_SCRIPT = """
         (function(){
@@ -104,6 +111,12 @@ public class ReaderActivity extends Activity {
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
         webView.setWebViewClient(new WebViewClient(){
+            @Override public void onPageStarted(WebView view, String url, Bitmap favicon){
+                pageLoading = true; pageReadyAt = 0L; lastContentSignature = ""; contentStableAt = 0L; status.setText("Cargando página…");
+            }
+            @Override public void onPageFinished(WebView view, String url){
+                pageLoading = false; pageReadyAt = System.currentTimeMillis(); lastContentSignature = ""; contentStableAt = 0L; status.setText("Página cargada. Espere un momento mientras se estabiliza el contenido.");
+            }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request){
                 Uri uri=request.getUrl();String scheme=uri.getScheme()==null?"":uri.getScheme();
                 return !(scheme.equalsIgnoreCase("http")||scheme.equalsIgnoreCase("https"));
@@ -111,15 +124,61 @@ public class ReaderActivity extends Activity {
         });
     }
 
+    private void waitUntilPageReady(Runnable action) { waitUntilPageReady(System.currentTimeMillis(), action); }
+
+    private void waitUntilPageReady(long startedAt, Runnable action) {
+        if (System.currentTimeMillis() - startedAt > 60000L) {
+            status.setText("La página tardó más de 60 segundos en quedar lista. Recargue e intente nuevamente.");
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (pageLoading || pageReadyAt == 0L || now - pageReadyAt < MINIMUM_READY_MS) {
+            status.setText("Esperando a que termine de cargar la página…");
+            handler.postDelayed(() -> waitUntilPageReady(startedAt, action), 250L);
+            return;
+        }
+        String readinessScript = "(function(){var t=(document.body&&document.body.innerText)||'';var s=[location.href,document.title||'',t.length,(document.documentElement&&document.documentElement.scrollHeight)||0,(document.body&&document.body.childElementCount)||0].join('|');return JSON.stringify({ready:document.readyState==='interactive'||document.readyState==='complete',textLength:t.length,signature:s});})()";
+        webView.evaluateJavascript(readinessScript, value -> {
+            try {
+                JSONObject info = new JSONObject(decodeJsValue(value));
+                if (!info.optBoolean("ready", false)) {
+                    lastContentSignature = ""; contentStableAt = 0L;
+                    status.setText("Esperando a que termine de cargar la página…");
+                    handler.postDelayed(() -> waitUntilPageReady(startedAt, action), 250L);
+                    return;
+                }
+                String signature = info.optString("signature", "");
+                long checkedAt = System.currentTimeMillis();
+                if (!signature.equals(lastContentSignature)) {
+                    lastContentSignature = signature;
+                    contentStableAt = checkedAt;
+                }
+                if (contentStableAt == 0L || checkedAt - contentStableAt < CONTENT_STABLE_MS) {
+                    status.setText("Esperando a que el contenido de la página quede estable…");
+                    handler.postDelayed(() -> waitUntilPageReady(startedAt, action), 250L);
+                    return;
+                }
+                action.run();
+            } catch (Exception error) {
+                status.setText("Esperando a que termine de cargar la página…");
+                handler.postDelayed(() -> waitUntilPageReady(startedAt, action), 250L);
+            }
+        });
+    }
+
     private void readPage() {
-        status.setText("Leyendo la página visible…");
-        String script="(function(){return JSON.stringify({text:(document.body&&document.body.innerText)||'',title:document.title||'',url:location.href});})()";
-        webView.evaluateJavascript(script, value -> handleReaderJson(value, "No se encontró texto visible en la página."));
+        waitUntilPageReady(() -> {
+            status.setText("Leyendo la página visible…");
+            String script="(function(){return JSON.stringify({text:(document.body&&document.body.innerText)||'',title:document.title||'',url:location.href});})()";
+            webView.evaluateJavascript(script, value -> handleReaderJson(value, "No se encontró texto visible en la página."));
+        });
     }
 
     private void readArea() {
-        status.setText("Arrastre con el dedo un rectángulo sobre el área que desea leer.");
-        webView.evaluateJavascript(AREA_SCRIPT, ignored -> pollAreaResult(0));
+        waitUntilPageReady(() -> {
+            status.setText("Arrastre con el dedo un rectángulo sobre el área que desea leer.");
+            webView.evaluateJavascript(AREA_SCRIPT, ignored -> pollAreaResult(0));
+        });
     }
 
     private void pollAreaResult(int attempt) {

@@ -5,11 +5,11 @@
   if(root)root.L26PdfReader=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
   const PDFJS_VERSION='4.10.38';
-  const PDFJS_CACHE='l26-pdfjs-4.10.38-legacy';
-  const PDFJS_LOCAL_MODULE_URL='./app/assets/vendor/pdfjs/pdf.min.mjs';
-  const PDFJS_LOCAL_WORKER_URL='./app/assets/vendor/pdfjs/pdf.worker.min.mjs';
-  const PDFJS_CMAP_URL='./app/assets/vendor/pdfjs/cmaps/';
-  const PDFJS_STANDARD_FONT_URL='./app/assets/vendor/pdfjs/standard_fonts/';
+  const PDFJS_CACHE='l26-pdfjs-4.10.38-legacy-v2';
+  const PDFJS_LOCAL_MODULE_URL='./app/assets/vendor/pdfjs-4.10.38-legacy/pdf.min.mjs';
+  const PDFJS_LOCAL_WORKER_URL='./app/assets/vendor/pdfjs-4.10.38-legacy/pdf.worker.min.mjs';
+  const PDFJS_CMAP_URL='./app/assets/vendor/pdfjs-4.10.38-legacy/cmaps/';
+  const PDFJS_STANDARD_FONT_URL='./app/assets/vendor/pdfjs-4.10.38-legacy/standard_fonts/';
   let active=null,pdfjsPromise=null,moduleBlobUrl='',workerBlobUrl='',sessionCounter=0;
 
   function normalizeRect(rect){
@@ -38,6 +38,15 @@
       else last.parts.push(text);
     }
     return lines.map(line=>line.parts.join(' ').replace(/\s+/g,' ').trim()).filter(Boolean).join('\n');
+  }
+
+  function installRuntimeCompatibility(){
+    if(typeof Promise!=='undefined'&&typeof Promise.withResolvers!=='function'){
+      Object.defineProperty(Promise,'withResolvers',{configurable:true,writable:true,value:function(){
+        let resolve,reject;const promise=new Promise((res,rej)=>{resolve=res;reject=rej});return{promise,resolve,reject};
+      }});
+    }
+    installTypedArrayCompatibility();
   }
 
   function installTypedArrayCompatibility(){
@@ -81,7 +90,7 @@
     if(!browserReady())throw new Error('El lector PDF solo puede ejecutarse en el navegador.');
     if(pdfjsPromise)return pdfjsPromise;
     pdfjsPromise=(async()=>{
-      installTypedArrayCompatibility();
+      installRuntimeCompatibility();
       const [moduleSource,workerSource]=await Promise.all([
         fetchLocalText(PDFJS_LOCAL_MODULE_URL),
         fetchLocalText(PDFJS_LOCAL_WORKER_URL)

@@ -1,0 +1,24 @@
+{
+  "canonical_entrypoint": "index.html",
+  "mirror_entrypoints": [
+    "Fiscalizacion_BI_V27_FINAL.html"
+  ],
+  "runtime_files": [
+    "index.html",
+    "Fiscalizacion_BI_V27_FINAL.html",
+    "app/index.html",
+    "sw.js",
+    "manifest.webmanifest",
+    "favicon-48.png",
+    "apple-touch-icon.png",
+    "icon-192.png",
+    "icon-512.png",
+    "icon-maskable-192.png",
+    "icon-maskable-512.png"
+  ],
+  "runtime_dirs": [
+    "app/assets",
+    "templates",
+    "config"
+  ]
+}

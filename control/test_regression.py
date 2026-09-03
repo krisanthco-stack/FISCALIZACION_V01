@@ -100,10 +100,10 @@ class FiscalReportMachoteRegression(unittest.TestCase):
 
     def test_service_worker_cache_bumped_for_report_change(self):
         sw=(ROOT/'sw.js').read_text(encoding='utf-8')
-        self.assertRegex(sw,r"fiscalizacion-bi-l26-manual-202608\d{2}")
+        self.assertIn('release-27.3.9',sw)
         self.assertIn("event.data==='SKIP_WAITING'",sw)
         self.assertNotIn('.then(()=>self.skipWaiting())',sw)
-        self.assertRegex(HTML,r"const APP_VERSION='27\.3\.\d+-FINAL'")
+        self.assertRegex(HTML,r"const APP_VERSION='27\.3\.\d+'")
 
     def test_docx_uses_final_fiscal_report_machote_labels(self):
         start=HTML.index('async function makeDocx(c)')

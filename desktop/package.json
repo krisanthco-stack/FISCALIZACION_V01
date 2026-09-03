@@ -1,6 +1,6 @@
 {
   "name": "fiscalizacion-l26-desktop",
-  "version": "26.0.0",
+  "version": "27.3.9",
   "private": true,
   "description": "Envoltura de escritorio Windows para Fiscalización Bienes Inmuebles L-26",
   "main": "main.js",
@@ -60,6 +60,14 @@
     },
     "portable": {
       "artifactName": "Fiscalizacion-L26-Portable-${version}.${ext}"
-    }
+    },
+    "protocols": [
+      {
+        "name": "L-26 lector interno de fuentes",
+        "schemes": [
+          "l26-reader"
+        ]
+      }
+    ]
   }
 }

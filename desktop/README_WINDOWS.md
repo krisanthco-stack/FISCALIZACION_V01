@@ -1,49 +1,56 @@
 # L-26 para Windows
 
-Esta carpeta agrega una envoltura Electron a la aplicación L-26 existente. No reemplaza ni reescribe `index.html`, `sw.js`, IndexedDB ni los módulos funcionales.
+Esta carpeta contiene la envoltura Electron de la aplicación L-26. No reemplaza ni reescribe `index.html`, `sw.js`, IndexedDB ni los módulos funcionales.
 
-## Funcionamiento
+## Instalador autónomo
 
-Al abrir la aplicación de Windows, Electron inicia un servidor privado en `127.0.0.1` y carga L-26 desde ese origen local. Esto permite conservar el Service Worker, IndexedDB y Cache Storage en un contexto HTTP local sin depender de GitHub ni de Internet para iniciar la aplicación.
+El instalador `Fiscalizacion-L26-Setup-27.3.9.exe` y la versión `Fiscalizacion-L26-Portable-27.3.9.exe` incluyen Electron y su propio Chromium. El usuario final no necesita instalar Node.js, Python, GitHub, Chrome ni Edge para ejecutar L-26.
 
-El usuario final no necesita instalar Node.js, Python, GitHub, Chrome ni Edge para ejecutar el instalador o la versión portable.
+Al abrir la aplicación, Electron inicia un servidor privado ligado exclusivamente a `127.0.0.1` y carga el runtime L-26 empaquetado dentro del instalador. Service Worker, IndexedDB y Cache Storage se mantienen en un origen HTTP local estable y la aplicación puede iniciar sin Internet.
 
-## Construcción
+Los servicios externos, por ejemplo `https://metro.sarapiqui.go.cr/`, requieren conexión únicamente cuando se consultan. La falta de Internet no impide abrir L-26 ni trabajar con los datos y recursos locales.
 
-Desde esta carpeta, en un equipo o entorno de compilación con Node.js:
+## Construcción para desarrolladores
 
-```bash
-npm install
-npm test
-npm run dist:win
+Desde la raíz del repositorio puede ejecutarse:
+
+```bat
+BUILD_WINDOWS_STANDALONE.cmd
 ```
+
+El script ejecuta la regresión completa, prepara los recursos PDF offline, instala las dependencias de compilación si faltan, construye NSIS + portable y verifica el runtime empaquetado.
 
 Los artefactos se generan en `desktop/dist/`:
 
-- `Fiscalizacion-L26-Setup-26.0.0.exe`: instalador Windows.
-- `Fiscalizacion-L26-Portable-26.0.0.exe`: ejecutable portable.
+- `Fiscalizacion-L26-Setup-27.3.9.exe`: instalador Windows con acceso directo y desinstalador.
+- `Fiscalizacion-L26-Portable-27.3.9.exe`: ejecutable portable autónomo.
+
+Node.js/npm son herramientas de **compilación**, no requisitos del usuario final.
 
 ## Datos locales
 
-Los expedientes y adjuntos continúan persistiendo mediante IndexedDB en el perfil de Electron. Instalar una nueva versión no debe borrar ese perfil. Antes de migraciones importantes se recomienda usar las funciones de respaldo/exportación que ya incorpora L-26.
+Los expedientes y adjuntos persisten mediante IndexedDB en el perfil de Electron. Actualizar mediante un nuevo instalador no debe borrar ese perfil. Antes de migraciones importantes utilice **Descargar JSON completo** o **Descargar ZIP completo** y compruebe el respaldo.
 
 ## Actualizaciones
 
-Esta envoltura no usa GitHub para autoactualizarse. Una actualización se distribuye como un nuevo instalador o ejecutable portable. La aplicación conserva su lógica PWA interna, pero la distribución de nuevas versiones del `.exe` es independiente.
+La aplicación instalada no necesita GitHub para ejecutarse ni para acceder a sus datos locales. Una actualización puede distribuirse copiando un nuevo `Setup.exe` o portable por USB, red local, almacenamiento institucional u otro medio.
 
-## Lector web interno de enlaces
-En la versión Windows, el botón **Abrir enlace** abre una ventana propia de L-26. Desde esa ventana se puede navegar y usar **Leer página** o **Leer selección** para enviar texto al expediente asociado. El número de trámite del expediente permanece protegido y no se reemplaza por el contenido leído.
+El repositorio GitHub es un canal separado para conservar el código fuente y generar futuras versiones; no es una dependencia del instalador.
 
-## Abrir L-26 realmente como aplicación de escritorio
+## Lector interno de enlaces
 
-Para que **Abrir enlace**, **Leer página** y **Leer área** funcionen dentro de una ventana propia de L-26, no abra `index.html` con Chrome o Edge.
+En Electron, **Abrir enlace** utiliza una ventana propia de L-26. El lector interno permite navegar, leer página o selección y enviar los datos detectados al expediente sin sustituir el número de trámite protegido.
 
-Desde la raíz del paquete haga doble clic en:
+El instalador registra el protocolo `l26-reader://` como mecanismo de integración de Windows. El funcionamiento principal de la aplicación de escritorio no depende de Chrome, Edge ni de una PWA instalada.
 
-`ABRIR_L26_WINDOWS.cmd`
+## Desarrollo y diagnóstico sin instalador
 
-En la primera apertura el lanzador ejecuta `npm install` únicamente si el motor Electron todavía no está preparado y después ejecuta `npm start`. Las aperturas siguientes reutilizan la instalación existente.
+Para desarrollo del **lector web interno** todavía se conserva `ABRIR_L26_WINDOWS.cmd`. Ese lanzador es una herramienta de desarrollo/fallback del repositorio y no es el método de ejecución para el usuario que recibe `Setup.exe`.
 
-Si `index.html` se abre accidentalmente en Chrome/Edge en Windows, L-26 ya no enviará el enlace a otra pestaña de Chrome: mostrará un aviso para abrir el modo escritorio.
+El comando subyacente de empaquetado sigue siendo:
 
-**Datos existentes:** Chrome/Edge y Electron usan perfiles de almacenamiento distintos. Si sus expedientes actuales viven en el navegador, exporte un respaldo antes de comenzar a trabajar de forma permanente en la versión de escritorio e impórtelo allí. No borre los datos del navegador hasta comprobar el respaldo.
+```bash
+npm run dist:win
+```
+
+`BUILD_WINDOWS_STANDALONE.cmd` automatiza esa misma secuencia con las comprobaciones previas y posteriores.

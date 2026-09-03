@@ -111,6 +111,8 @@
   }
 
   function recordIdentity(record) {
+    const folio = compact(record?.folio || record?.finca);
+    if (folio) return `F:${folio}`;
     const tramite = compact(record?.tramite);
     const property = propertyIdentity(record);
     if (tramite) return `T:${tramite}|${property || 'NO-PROP'}`;

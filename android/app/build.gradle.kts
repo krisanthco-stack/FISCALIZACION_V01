@@ -19,8 +19,8 @@ android {
         applicationId = "cr.go.sarapiqui.fiscalizacion.l26"
         minSdk = 29
         targetSdk = 36
-        versionCode = 260000
-        versionName = "26.0.0"
+        versionCode = 270309
+        versionName = "27.3.9"
     }
 
     signingConfigs {

@@ -39,14 +39,20 @@
     const type=attr(cellTag,'t');if(type==='inlineStr'){const m=cellXml.match(/<is\b[^>]*>([\s\S]*?)<\/is>/i);if(!m)return'';let s='';for(const t of m[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/gi))s+=xmlEntityDecode(t[1]);return s}
     const vm=cellXml.match(/<v\b[^>]*>([\s\S]*?)<\/v>/i);if(!vm)return'';const raw=xmlEntityDecode(vm[1]);if(type==='s')return shared[Number(raw)]??'';if(type==='str'||type==='e')return raw;if(type==='b')return raw==='1';const n=Number(raw);return Number.isFinite(n)?n:raw;
   }
+  function formulaHyperlinkUrl(cellXml){
+    const fm=String(cellXml||'').match(/<f\b[^>]*>([\s\S]*?)<\/f>/i);if(!fm)return'';
+    const formula=xmlEntityDecode(fm[1]),match=formula.match(/\bHYPERLINK\s*\(\s*"((?:""|[^"])*)"/i);if(!match)return'';
+    const url=match[1].replace(/""/g,'"').trim();return /^https?:\/\/[^\s]+$/i.test(url)?url:'';
+  }
   function parseSheet(xml,shared,rels){
-    const rows=[],refs=[];let maxCol=-1;
+    const rows=[],refs=[],formulaLinks={};let maxCol=-1;
     for(const rm of String(xml||'').matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/gi)){
       const row=[],rowRefs=[];for(const cm of rm[1].matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>|<c\b([^>]*)\/>/gi)){
-        const attrs='<c '+(cm[1]||cm[3]||'')+'>',body=cm[2]||'',ref=attr(attrs,'r'),ci=colIndex(ref);if(ci<0)continue;row[ci]=cellValue(body,attrs,shared);rowRefs[ci]=ref;maxCol=Math.max(maxCol,ci);
+        const attrs='<c '+(cm[1]||cm[3]||'')+'>',body=cm[2]||'',ref=attr(attrs,'r'),ci=colIndex(ref);if(ci<0)continue;row[ci]=cellValue(body,attrs,shared);rowRefs[ci]=ref;const formulaUrl=formulaHyperlinkUrl(body);if(ref&&formulaUrl)formulaLinks[ref]=formulaUrl;maxCol=Math.max(maxCol,ci);
       }rows.push(row);refs.push(rowRefs);
     }
     const hyperlinks={};for(const hm of String(xml||'').matchAll(/<hyperlink\b[^>]*\/?>(?:<\/hyperlink>)?/gi)){const tag=hm[0],ref=attr(tag,'ref'),rid=attr(tag,'r:id'),location=attr(tag,'location');if(!ref)continue;const target=rid&&rels[rid]?rels[rid].target:location;if(target)hyperlinks[ref]=target}
+    for(const [ref,url] of Object.entries(formulaLinks))if(!hyperlinks[ref])hyperlinks[ref]=url;
     return{rows,refs,hyperlinks,maxCol};
   }
 
@@ -122,7 +128,7 @@
   }
   function importRecordsFromWorkbook(workbook){const layout=detectWorkbookLayout(workbook),sheet=workbook.sheets[layout.sheetIndex],records=mapRowsToRecords(sheet.rows,layout.headerRowIndex,{sheetName:sheet.name,linkIndex:workbook.linkIndex,refs:sheet.refs,hyperlinks:sheet.hyperlinks});return{layout,records,warnings:[]}}
   const normKey=v=>normalizeText(v).replace(/\s+/g,'');
-  function canonicalIdentityKey(record){const g=record?.general||record||{},folio=normKey(g.folio),finca=normKey(g.finca),plano=normKey(g.plano),derecho=normKey(g.derecho||g.right),id=normKey(g.sourceId),tramite=normKey(g.tramite),base=folio||finca;if(tramite)return`T:${tramite}|B:${base}|P:${plano}|D:${derecho}`;if(base||plano||derecho)return`NO-T|B:${base}|P:${plano}|D:${derecho}`;if(id)return`NO-T|ID:${id}`;return''}
+  function canonicalIdentityKey(record){const g=record?.general||record||{},folio=normKey(g.folio),finca=normKey(g.finca),plano=normKey(g.plano),derecho=normKey(g.derecho||g.right),id=normKey(g.sourceId),tramite=normKey(g.tramite),base=folio||finca;if(base)return`F:${base}`;if(tramite)return`T:${tramite}|P:${plano}|D:${derecho}`;if(plano||derecho)return`NO-T|P:${plano}|D:${derecho}`;if(id)return`NO-T|ID:${id}`;return''}
   function mergeNonEmpty(a,b){if(Array.isArray(a)||Array.isArray(b))return Array.isArray(a)&&a.length?a:b;if(a&&typeof a==='object'&&b&&typeof b==='object'){const out={...a};for(const [k,v] of Object.entries(b))out[k]=mergeNonEmpty(out[k],v);return out}return cleanPlaceholder(a)!==''?a:b}
   function dedupeImportedRecords(records){const out=[],byKey=new Map();for(const r of records||[]){const k=canonicalIdentityKey(r);if(!k){out.push(r);continue}if(byKey.has(k)){const idx=byKey.get(k);out[idx]=mergeNonEmpty(out[idx],r)}else{byKey.set(k,out.length);out.push(r)}}return out}
 
