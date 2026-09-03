@@ -2,13 +2,13 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const core=require('../app/assets/l26_excel_import_core.js');
 
-test('misma propiedad con trámites distintos nunca se deduplica',()=>{
+test('misma propiedad con trámites distintos se consolida por Folio',()=>{
   const records=[
     {general:{tramite:'2024-07370',folio:'275480',finca:'275480',plano:'H-1234567-2020',derecho:'001'}},
     {general:{tramite:'2025-17123',folio:'275480',finca:'275480',plano:'H-1234567-2020',derecho:'001'}}
   ];
-  assert.notEqual(core.canonicalIdentityKey(records[0]),core.canonicalIdentityKey(records[1]));
-  assert.equal(core.dedupeImportedRecords(records).length,2);
+  assert.equal(core.canonicalIdentityKey(records[0]),core.canonicalIdentityKey(records[1]));
+  assert.equal(core.dedupeImportedRecords(records).length,1);
 });
 
 test('repetición exacta de trámite y propiedad sí se consolida',()=>{

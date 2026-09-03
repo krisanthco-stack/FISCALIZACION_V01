@@ -22,7 +22,7 @@ def test_save_and_package_restore_use_property_identity_not_only_tramite():
     imp=fn('findExistingCaseForImport','saveImportedCaseWithoutDuplicates')
     assert 'caseCoreIdentity' in imp
     restore=fn('importManagementPackage','bindPackageControls')
-    assert 'caseCoreIdentity' in restore
+    assert 'importMergeKey' in restore and 'findImportMatchByFolio' in restore
 
 def test_pwa_waits_for_manual_activation_and_is_cache_first():
     assert 'self.skipWaiting()' not in re.search(r"self.addEventListener\('install'.*?\);",SW,re.S).group(0)

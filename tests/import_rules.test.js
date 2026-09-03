@@ -67,15 +67,15 @@ test('encuentra encabezados después de títulos y mapea Libro2', () => {
   });
 });
 
-test('conserva uno al repetir folio plano y derecho', () => {
+test('consolida todas las filas del mismo Folio aunque cambie el plano', () => {
   const rows = [
     { folio: '151448-000', plano: 'H-0324656-1996', derecho: '001', owner: 'Ana' },
     { folio: '151448000', plano: 'H03246561996', derecho: '001', ownerId: '01-1114-0693' },
     { folio: '151448-000', plano: 'H-9999999-2026', derecho: '001', owner: 'Otra' },
   ];
   const result = rules.dedupeRows(rows);
-  assert.equal(result.records.length, 2);
-  assert.equal(result.duplicates, 1);
+  assert.equal(result.records.length, 1);
+  assert.equal(result.duplicates, 2);
   assert.equal(result.records[0].owner, 'Ana');
   assert.equal(result.records[0].ownerId, '01-1114-0693');
 });
@@ -87,15 +87,15 @@ test('un folio existente sin plano o derecho no absorbe otra combinación', () =
   }), null);
 });
 
-test('407 filas con folios repetidos pero distinto plano o derecho conservan 407 expedientes', () => {
+test('407 filas con 47 folios se consolidan a 47 trámites por Folio', () => {
   const rows = Array.from({ length: 407 }, (_, index) => ({
     folio: String(100000 + (index % 47)),
     plano: `H-${String(2000000 + index)}-2026`,
     derecho: String((index % 3) + 1).padStart(3, '0'),
   }));
   const result = rules.dedupeRows(rows);
-  assert.equal(result.records.length, 407);
-  assert.equal(result.duplicates, 0);
+  assert.equal(result.records.length, 47);
+  assert.equal(result.duplicates, 360);
 });
 
 test('nombra el nivel respecto de la vía y firma la diferencia observada', () => {
@@ -153,13 +153,13 @@ test('distrito no oficial se excluye de la actualización automática',()=>{
   assert.equal(result.invalidDistrict,'Chilamate');
 });
 
-test('dedupeRows conserva trámites distintos aunque compartan propiedad',()=>{
+test('dedupeRows consolida trámites distintos cuando comparten el mismo Folio',()=>{
   const result=rules.dedupeRows([
     {tramite:'2024-07370',folio:'275480',plano:'H-1-2020',derecho:'001'},
     {tramite:'2025-17123',folio:'275480',plano:'H-1-2020',derecho:'001'}
   ]);
-  assert.equal(result.records.length,2);
-  assert.equal(result.duplicates,0);
+  assert.equal(result.records.length,1);
+  assert.equal(result.duplicates,1);
 });
 
 test('lector separa fecha de declaración y fecha de inspección y no aplica fecha genérica',()=>{

@@ -104,7 +104,7 @@ def test_management_keeps_year_alerts_and_active_counter_excludes_management():
     active=function_block('renderCaseList')
     assert 'all.filter(c=>!managementInspectionCompleted(c))' in active
     assert 'L26ManagementCore.summaryCounts(all,managementInspectionCompleted)' in active
-    assert "$('#processCaseCount').textContent=visibleCases.length" in active
+    assert "$('#processCaseCount').textContent=L26IntegrityCore.uniqueFolioCount(visibleCases)" in active
 
 
 def test_final_decision_controls_are_compact_not_removed():
@@ -128,8 +128,8 @@ def test_json_imports_merge_without_replacing_existing_database():
 
 
 def test_release_version_and_manual_cache_remain_manual_after_new_release():
-    assert "const APP_VERSION='27.3.8-FINAL'" in HTML
+    assert "const APP_VERSION='27.3.9'" in HTML
     sw=(ROOT/'sw.js').read_text(encoding='utf-8')
-    assert "fiscalizacion-bi-l26-manual-20260829" in sw
+    assert "release-27.3.9" in sw
     assert "event.data==='SKIP_WAITING'" in sw
     assert '.then(()=>self.skipWaiting())' not in sw

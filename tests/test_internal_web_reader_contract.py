@@ -7,7 +7,8 @@ ALT = (ROOT / 'Fiscalizacion_BI_V27_FINAL.html').read_text(encoding='utf-8')
 
 def test_open_case_source_prefers_desktop_internal_reader_with_web_fallback():
     assert 'window.l26Desktop?.openSource' in HTML
-    assert "window.open(c.sourceLink,'_blank'" in HTML
+    assert 'function openWebSourceLink(url)' in HTML
+    assert 'return openWebSourceLink(source)' in HTML
     assert 'caseId:c.id' in HTML
     assert 'tramite:c.general?.tramite' in HTML
 

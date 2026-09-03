@@ -19,8 +19,8 @@ def test_compact_grid_fits_six_district_items_on_wide_screens():
 def test_district_summary_uses_compact_count_badge_in_both_lists():
     # The requested compact header shows the district name and a small numeric count only.
     assert 'class="district-count compact-count"' in HTML
-    assert 'aria-label="${group.cases.length} ${group.cases.length===1?\'trámite\':\'trámites\'}"' in HTML
-    assert 'aria-label="${district.cases.length} ${district.cases.length===1?\'trámite\':\'trámites\'}"' in HTML
+    assert 'aria-label="${L26IntegrityCore.uniqueFolioCount(group.cases)} ${L26IntegrityCore.uniqueFolioCount(group.cases)===1?\'trámite\':\'trámites\'}"' in HTML
+    assert 'aria-label="${L26IntegrityCore.uniqueFolioCount(district.cases)} ${L26IntegrityCore.uniqueFolioCount(district.cases)===1?\'trámite\':\'trámites\'}"' in HTML
 
 
 def test_service_worker_cache_refreshes_compact_layout():

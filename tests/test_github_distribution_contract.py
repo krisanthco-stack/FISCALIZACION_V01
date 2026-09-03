@@ -40,7 +40,8 @@ def test_android_workflow_builds_installable_apk_after_tests():
     workflow = read('.github/workflows/android.yml')
     assert 'ubuntu-latest' in workflow
     assert 'scripts/run_ci.py' in workflow
-    assert 'actions/setup-java@v6' in workflow
+    assert 'actions/setup-java@v5' in workflow
+    assert 'actions/setup-java@v6' not in workflow
     assert 'gradle/actions/setup-gradle@v4' in workflow
     assert 'gradle-version: 9.5.0' in workflow
     assert 'assembleDebug' in workflow
@@ -98,12 +99,17 @@ def test_web_runtime_detects_android_shell_and_routes_reader_data_back_to_case()
 
 
 def test_android_asset_sync_excludes_development_and_copies_runtime():
+    import json
     script = read('scripts/sync_android_assets.py')
+    manifest = json.loads(read('config/runtime_distribution_manifest.json'))
     assert 'android/app/src/main/assets/www' in script
-    assert 'index.html' in script
-    assert 'app/assets' in script
-    assert 'desktop' in script
-    assert 'tests' in script
+    assert 'from distribution_parity import copy_runtime_tree' in script
+    assert 'copy_runtime_tree(ROOT, DEST)' in script
+    runtime_paths = set(manifest['runtime_files']) | set(manifest['runtime_dirs'])
+    assert 'index.html' in runtime_paths
+    assert 'app/assets' in runtime_paths
+    assert 'desktop' not in runtime_paths
+    assert 'tests' not in runtime_paths
 
 
 def test_official_android_release_uses_stable_signing_secrets_and_release_apk():
@@ -135,17 +141,27 @@ def test_windows_and_android_builds_vendor_compatible_pdf_engine_before_packagin
         build_pos = workflow.index(build_marker)
         assert vendor_pos < build_pos
     assert release.count('scripts/vendor_pdfjs.py --required') >= 2
-    assert 'app/assets/vendor/pdfjs/pdf.min.mjs' in read('app/assets/l26_pdf_reader.js')
-    assert 'app/assets/vendor/pdfjs/pdf.worker.min.mjs' in read('app/assets/l26_pdf_reader.js')
+    assert 'app/assets/vendor/pdfjs-4.10.38-legacy/pdf.min.mjs' in read('app/assets/l26_pdf_reader.js')
+    assert 'app/assets/vendor/pdfjs-4.10.38-legacy/pdf.worker.min.mjs' in read('app/assets/l26_pdf_reader.js')
 
 
 def test_android_asset_sync_copies_vendored_pdf_engine_into_apk_assets():
+    import json
     script = read('scripts/sync_android_assets.py')
-    assert "ROOT_DIRS = ['app/assets', 'templates', 'config']" in script
-    assert "src_dir.rglob('*')" in script
-    assert 'src.relative_to(ROOT)' in script
+    manifest = json.loads(read('config/runtime_distribution_manifest.json'))
+    assert manifest['runtime_dirs'] == ['app/assets', 'templates', 'config']
+    assert 'copy_runtime_tree(ROOT, DEST)' in script
+    assert 'pdf.min.mjs' in script
+    assert 'pdf.worker.min.mjs' in script
+    assert 'cmaps' in script
+    assert 'standard_fonts' in script
 
 
 def test_release_upload_explicitly_targets_current_repository():
     workflow = read('.github/workflows/release.yml')
     assert 'GH_REPO: ${{ github.repository }}' in workflow
+
+def test_all_production_workflows_use_published_stable_setup_java_action():
+    workflows='\n'.join(p.read_text(encoding='utf-8') for p in (ROOT/'.github/workflows').glob('*.yml'))
+    assert 'actions/setup-java@v6' not in workflows
+    assert 'actions/setup-java@v5' in workflows

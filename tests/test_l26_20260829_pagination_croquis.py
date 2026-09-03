@@ -83,6 +83,6 @@ def test_croquis_manual_position_survives_recalculation_and_normalization():
 
 
 def test_release_is_bumped_for_manual_pwa_update():
-    assert "const APP_VERSION='27.3.8-FINAL'" in HTML
+    assert "const APP_VERSION='27.3.9'" in HTML
     sw=(ROOT/'sw.js').read_text(encoding='utf-8')
-    assert 'fiscalizacion-bi-l26-manual-20260829' in sw
+    assert 'release-27.3.9' in sw
