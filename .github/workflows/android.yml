@@ -1,0 +1,53 @@
+name: L26 - Android
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.5.0
+      - name: Preparar Android SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"
+      - name: Instalar dependencias de pruebas
+        run: python -m pip install --upgrade pytest lxml
+      - name: Pruebas antes de empaquetar
+        run: python scripts/run_ci.py
+      - name: Incluir motor PDF compatible offline
+        run: python scripts/vendor_pdfjs.py --required
+      - name: Sincronizar aplicación web dentro del APK
+        run: python scripts/sync_android_assets.py
+      - name: Verificar paridad del runtime Android
+        run: python scripts/distribution_parity.py --tree android/app/src/main/assets/www
+      - name: Construir APK instalable
+        run: gradle --no-daemon -p android assembleDebug
+      - name: Verificar runtime offline dentro del APK
+        run: python scripts/verify_packaged_runtime.py --android android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Preparar nombre de entrega
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/debug/app-debug.apk dist/Fiscalizacion-L26-Android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fiscalizacion-L26-Android
+          path: dist/Fiscalizacion-L26-Android.apk
+          if-no-files-found: error
