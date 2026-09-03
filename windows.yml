@@ -1,0 +1,49 @@
+name: L26 - Windows
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependencias de pruebas
+        run: python -m pip install --upgrade pytest lxml
+      - name: Pruebas antes de empaquetar
+        run: python scripts/run_ci.py
+      - name: Incluir motor PDF compatible offline
+        run: python scripts/vendor_pdfjs.py --required
+      - name: Verificar fuente única antes del build
+        run: python scripts/distribution_parity.py
+      - name: Instalar dependencias de escritorio
+        working-directory: desktop
+        run: npm install --no-audit --no-fund --prefer-offline
+      - name: Construir instalador y portable
+        working-directory: desktop
+        run: npm run dist:win
+      - name: Verificar runtime empaquetado Windows
+        run: python scripts/verify_packaged_runtime.py --windows desktop/dist
+      - name: Verificar ejecutables
+        shell: pwsh
+        run: |
+          Get-ChildItem desktop/dist/Fiscalizacion-L26-Setup-*.exe | ForEach-Object { Write-Host $_.FullName }
+          Get-ChildItem desktop/dist/Fiscalizacion-L26-Portable-*.exe | ForEach-Object { Write-Host $_.FullName }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fiscalizacion-L26-Windows
+          path: |
+            desktop/dist/Fiscalizacion-L26-Setup-*.exe
+            desktop/dist/Fiscalizacion-L26-Portable-*.exe
+          if-no-files-found: error
