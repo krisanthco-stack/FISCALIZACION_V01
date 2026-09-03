@@ -1,0 +1,156 @@
+--- /mnt/data/l26_metro_final/base/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/index.html	2026-08-31 06:07:33.000000000 +0000
++++ /mnt/data/l26_metro_final/work/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/index.html	2026-08-31 16:09:28.579288805 +0000
+@@ -1582,7 +1582,13 @@
+   }
+   const windowsBrowser=/Windows/i.test(String(navigator.userAgent||navigator.platform||''));
+   if(windowsBrowser){
+-    return toast('L-26 está ejecutándose en modo Web/PWA. Para usar el lector interno de enlaces en Windows, abra la aplicación de escritorio instalada.');
++    try{
++      window.location.href=l26DesktopReaderFallbackUrl(c);
++      return toast('L-26 está en modo Web/PWA en Windows. Abriendo el lector interno de la aplicación de escritorio instalada (EXE)…');
++    }catch(error){
++      console.warn('No se pudo entregar el enlace al lector Electron:',error);
++      return toast(`No se pudo abrir el lector de escritorio: ${error?.message||error}`);
++    }
+   }
+   window.open(c.sourceLink,'_blank','noopener,noreferrer');
+ }
+@@ -3229,9 +3235,10 @@
+ function updateNetwork(){const on=navigator.onLine;$('#netDot').className=`dot ${on?'online':'offline'}`;$('#netText').textContent=on?'Con conexión':'Sin conexión'}
+ window.addEventListener('online',()=>{updateNetwork()});window.addEventListener('offline',()=>{updateNetwork()});
+ function isStandaloneMode(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true}
+-function isNativeInstalledApp(){return Boolean(window.l26Desktop?.openSource||window.L26Android?.openSource)}
++function appRuntimeKind(){if(window.l26Desktop?.openSource||isL26DesktopShell())return 'windows-desktop';if(window.L26Android?.openSource)return 'android';if(isStandaloneMode())return 'pwa';return 'web'}
++function isNativeInstalledApp(){return ['windows-desktop','android'].includes(appRuntimeKind())}
+ function isMobileTabletDevice(){return Boolean(navigator.maxTouchPoints>0||window.matchMedia?.('(pointer:coarse)').matches||/Android|iPhone|iPad|Mobile|Tablet/i.test(navigator.userAgent))}
+-function refreshInstallUi(){const btn=$('#installBtn');if(!btn)return;if(isStandaloneMode()){btn.hidden=false;btn.disabled=true;btn.innerHTML='✓ <span>Instalada</span>';return}btn.hidden=false;btn.disabled=false;btn.innerHTML=deferredInstallPrompt?'⬇️ <span>Instalar</span>':'ℹ️ <span>Cómo instalar</span>'}
++function refreshInstallUi(){const btn=$('#installBtn');if(!btn)return;const runtime=appRuntimeKind();if(runtime==='windows-desktop'){btn.hidden=false;btn.disabled=true;btn.innerHTML='✓ <span>Escritorio</span>';return}if(runtime==='android'){btn.hidden=false;btn.disabled=true;btn.innerHTML='✓ <span>Android</span>';return}if(runtime==='pwa'){btn.hidden=false;btn.disabled=true;btn.innerHTML='✓ <span>PWA instalada</span>';return}btn.hidden=false;btn.disabled=false;btn.innerHTML=deferredInstallPrompt?'⬇️ <span>Instalar PWA</span>':'ℹ️ <span>Cómo instalar</span>'}
+ function setAppUpdateUi(mode='idle'){
+   const btn=$('#appUpdateBtn');if(!btn)return;
+   if(isNativeInstalledApp()){btn.hidden=false;btn.dataset.updateState='native';btn.disabled=true;btn.innerHTML=`✓ <span>Versión ${APP_VERSION}</span>`;btn.title=`Fiscalización B.I. ${APP_VERSION} · La aplicación instalada se actualiza con el nuevo EXE/APK firmado de GitHub Releases.`;return}
+--- /mnt/data/l26_metro_final/base/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/Fiscalizacion_BI_V27_FINAL.html	2026-08-31 06:07:33.000000000 +0000
++++ /mnt/data/l26_metro_final/work/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/Fiscalizacion_BI_V27_FINAL.html	2026-08-31 16:09:28.895290374 +0000
+@@ -1582,7 +1582,13 @@
+   }
+   const windowsBrowser=/Windows/i.test(String(navigator.userAgent||navigator.platform||''));
+   if(windowsBrowser){
+-    return toast('L-26 está ejecutándose en modo Web/PWA. Para usar el lector interno de enlaces en Windows, abra la aplicación de escritorio instalada.');
++    try{
++      window.location.href=l26DesktopReaderFallbackUrl(c);
++      return toast('L-26 está en modo Web/PWA en Windows. Abriendo el lector interno de la aplicación de escritorio instalada (EXE)…');
++    }catch(error){
++      console.warn('No se pudo entregar el enlace al lector Electron:',error);
++      return toast(`No se pudo abrir el lector de escritorio: ${error?.message||error}`);
++    }
+   }
+   window.open(c.sourceLink,'_blank','noopener,noreferrer');
+ }
+@@ -3229,9 +3235,10 @@
+ function updateNetwork(){const on=navigator.onLine;$('#netDot').className=`dot ${on?'online':'offline'}`;$('#netText').textContent=on?'Con conexión':'Sin conexión'}
+ window.addEventListener('online',()=>{updateNetwork()});window.addEventListener('offline',()=>{updateNetwork()});
+ function isStandaloneMode(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true}
+-function isNativeInstalledApp(){return Boolean(window.l26Desktop?.openSource||window.L26Android?.openSource)}
++function appRuntimeKind(){if(window.l26Desktop?.openSource||isL26DesktopShell())return 'windows-desktop';if(window.L26Android?.openSource)return 'android';if(isStandaloneMode())return 'pwa';return 'web'}
++function isNativeInstalledApp(){return ['windows-desktop','android'].includes(appRuntimeKind())}
+ function isMobileTabletDevice(){return Boolean(navigator.maxTouchPoints>0||window.matchMedia?.('(pointer:coarse)').matches||/Android|iPhone|iPad|Mobile|Tablet/i.test(navigator.userAgent))}
+-function refreshInstallUi(){const btn=$('#installBtn');if(!btn)return;if(isStandaloneMode()){btn.hidden=false;btn.disabled=true;btn.innerHTML='✓ <span>Instalada</span>';return}btn.hidden=false;btn.disabled=false;btn.innerHTML=deferredInstallPrompt?'⬇️ <span>Instalar</span>':'ℹ️ <span>Cómo instalar</span>'}
++function refreshInstallUi(){const btn=$('#installBtn');if(!btn)return;const runtime=appRuntimeKind();if(runtime==='windows-desktop'){btn.hidden=false;btn.disabled=true;btn.innerHTML='✓ <span>Escritorio</span>';return}if(runtime==='android'){btn.hidden=false;btn.disabled=true;btn.innerHTML='✓ <span>Android</span>';return}if(runtime==='pwa'){btn.hidden=false;btn.disabled=true;btn.innerHTML='✓ <span>PWA instalada</span>';return}btn.hidden=false;btn.disabled=false;btn.innerHTML=deferredInstallPrompt?'⬇️ <span>Instalar PWA</span>':'ℹ️ <span>Cómo instalar</span>'}
+ function setAppUpdateUi(mode='idle'){
+   const btn=$('#appUpdateBtn');if(!btn)return;
+   if(isNativeInstalledApp()){btn.hidden=false;btn.dataset.updateState='native';btn.disabled=true;btn.innerHTML=`✓ <span>Versión ${APP_VERSION}</span>`;btn.title=`Fiscalización B.I. ${APP_VERSION} · La aplicación instalada se actualiza con el nuevo EXE/APK firmado de GitHub Releases.`;return}
+--- /mnt/data/l26_metro_final/base/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/desktop/main.js	2026-08-31 06:07:33.000000000 +0000
++++ /mnt/data/l26_metro_final/work/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/desktop/main.js	2026-08-31 16:08:53.007781652 +0000
+@@ -11,6 +11,7 @@
+ let localOrigin = null;
+ let mainWindow = null;
+ const readerContexts = new Map();
++let pendingReaderPayload = null;
+ 
+ function runtimeRoot() {
+   return app.isPackaged
+@@ -57,6 +58,24 @@
+   }
+ }
+ 
++function readerPayloadFromArgv(argv = []) {
++  for (const arg of argv) {
++    const value = String(arg || '').trim();
++    if (!/^l26-reader:\/\//i.test(value)) continue;
++    const payload = desktopReaderRequest(value);
++    if (payload) return payload;
++  }
++  return null;
++}
++
++function acceptReaderProtocolArgs(argv = []) {
++  const payload = readerPayloadFromArgv(argv);
++  if (!payload) return false;
++  if (mainWindow && !mainWindow.isDestroyed()) createReaderWindow(payload);
++  else pendingReaderPayload = payload;
++  return true;
++}
++
+ function deliverToMainWindow(channel, payload, fallbackName) {
+   if (!mainWindow || mainWindow.isDestroyed()) return false;
+   mainWindow.webContents.send(channel, payload);
+@@ -423,14 +442,23 @@
+     throw new Error('El servidor local no está ligado a 127.0.0.1');
+   }
+   createWindow();
++  if (pendingReaderPayload) {
++    const payload = pendingReaderPayload;
++    pendingReaderPayload = null;
++    createReaderWindow(payload);
++  }
+ }
+ 
++if (process.platform === 'win32') app.setAsDefaultProtocolClient('l26-reader');
++acceptReaderProtocolArgs(process.argv);
++
+ const gotSingleInstanceLock = app.requestSingleInstanceLock();
+ 
+ if (!gotSingleInstanceLock) {
+   app.quit();
+ } else {
+-  app.on('second-instance', () => {
++  app.on('second-instance', (_event, argv) => {
++    acceptReaderProtocolArgs(argv);
+     const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : BrowserWindow.getAllWindows()[0];
+     if (!win) return;
+     if (win.isMinimized()) win.restore();
+--- /mnt/data/l26_metro_final/base/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/desktop/package.json	2026-08-31 04:24:34.000000000 +0000
++++ /mnt/data/l26_metro_final/work/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/desktop/package.json	2026-08-31 16:08:53.006864378 +0000
+@@ -60,6 +60,14 @@
+     },
+     "portable": {
+       "artifactName": "Fiscalizacion-L26-Portable-${version}.${ext}"
+-    }
++    },
++    "protocols": [
++      {
++        "name": "L-26 lector interno de fuentes",
++        "schemes": [
++          "l26-reader"
++        ]
++      }
++    ]
+   }
+ }
+--- /mnt/data/l26_metro_final/base/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/sw.js	2026-08-31 06:07:33.000000000 +0000
++++ /mnt/data/l26_metro_final/work/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/sw.js	2026-08-31 16:08:53.949843267 +0000
+@@ -1,4 +1,4 @@
+-const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1-conformidad-v1-windows-desktop-launch-v1-desktop-bridge-fallback-v2-pdf-compat-v1-compact-districts-v1-android-offline-pdf-ocr-v1-rebuild-reader-v2-release-27.3.9';
++const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1-conformidad-v1-windows-desktop-launch-v1-desktop-bridge-fallback-v2-pdf-compat-v1-compact-districts-v1-android-offline-pdf-ocr-v1-rebuild-reader-v2-metro-protocol-handoff-v1-release-27.3.9';
+ const CORE=['./','./index.html','./app/index.html','./app/assets/import_rules.js','./app/assets/l26_integrity_core.js','./app/assets/l26_management_core.js','./app/assets/l26_territory_core.js','./app/assets/l26_reader_apply_core.js','./app/assets/l26_excel_import_core.js','./app/assets/l26_croquis_core.js','./app/assets/l26_filter_core.js','./app/assets/l26_pdf_reader.js','./manifest.webmanifest','./favicon-48.png','./apple-touch-icon.png','./icon-192.png','./icon-512.png','./icon-maskable-192.png','./icon-maskable-512.png'];
+ const PDFJS_CACHE='l26-pdfjs-4.10.38-legacy-v2';
+ const PDFJS_ASSETS=['./app/assets/vendor/pdfjs-4.10.38-legacy/pdf.min.mjs','./app/assets/vendor/pdfjs-4.10.38-legacy/pdf.worker.min.mjs'];
+--- /mnt/data/l26_metro_final/base/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/desktop/README_WINDOWS.md	2026-08-30 22:29:32.000000000 +0000
++++ /mnt/data/l26_metro_final/work/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/desktop/README_WINDOWS.md	2026-08-31 16:10:49.579671389 +0000
+@@ -47,3 +47,7 @@
+ Si `index.html` se abre accidentalmente en Chrome/Edge en Windows, L-26 ya no enviará el enlace a otra pestaña de Chrome: mostrará un aviso para abrir el modo escritorio.
+ 
+ **Datos existentes:** Chrome/Edge y Electron usan perfiles de almacenamiento distintos. Si sus expedientes actuales viven en el navegador, exporte un respaldo antes de comenzar a trabajar de forma permanente en la versión de escritorio e impórtelo allí. No borre los datos del navegador hasta comprobar el respaldo.
++
++## Handoff desde la PWA de Windows al lector de escritorio
++
++A partir de la corrección Metro del 2026-08-31, el instalador Windows registra `l26-reader://`. Si L-26 fue abierta como PWA de Edge/Chrome y se pulsa **Abrir enlace**, la PWA entrega la URL al EXE de Fiscalizacion L26 mediante ese protocolo. El EXE recibe el deep link y abre la misma URL en el lector interno Electron. Si el EXE no está instalado o el protocolo no quedó registrado, Windows/navegador puede mostrar que no existe una aplicación asociada; en ese caso debe instalarse nuevamente el instalador generado con esta versión.

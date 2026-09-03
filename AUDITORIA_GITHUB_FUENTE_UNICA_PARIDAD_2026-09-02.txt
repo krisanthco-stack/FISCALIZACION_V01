@@ -1,0 +1,44 @@
+AUDITORÍA L-26 — GITHUB COMO FUENTE ÚNICA Y PARIDAD DE DISTRIBUCIONES
+Fecha: 2026-09-02
+
+OBJETIVO
+- Mantener apariencia, funciones e informes iguales entre PWA/GitHub, Windows Electron y Android.
+- Evitar copias funcionales divergentes.
+- No modificar la aplicación ni los machotes durante esta tarea.
+
+CAMBIOS DE DISTRIBUCIÓN
+1. Se creó config/runtime_distribution_manifest.json como contrato central del runtime.
+2. scripts/distribution_parity.py copia/verifica el runtime por SHA-256.
+3. scripts/build_web_release.py construye el artefacto PWA desde el runtime canónico.
+4. Android sincroniza desde el mismo contrato central y verifica la copia antes de compilar.
+5. Windows y Android verifican los archivos del artefacto final contra la fuente del mismo checkout.
+6. Se agregó workflow GitHub Pages con CI, vendorización PDF offline, construcción y paridad.
+7. Los workflows CI, Windows, Android y Release incluyen compuertas de fuente única/paridad.
+
+ARCHIVOS FUNCIONALES PROTEGIDOS — SIN CAMBIOS
+526f9dfcfbbbf9796fdb196e50190755a0c9451a2d88481909e7a3ca43b2635f  index.html
+526f9dfcfbbbf9796fdb196e50190755a0c9451a2d88481909e7a3ca43b2635f  Fiscalizacion_BI_V27_FINAL.html
+b0e95a3319f42a6c4329a12c0dab05202357c33deac5df2af7de58f54e5d9368  sw.js
+8406f09231a73c443a6a92be2e813a6d989b61ecf8997f2487caffe4be34049c  desktop/main.js
+
+MACHOTES PROTEGIDOS — SIN CAMBIOS
+81214b02982f2dd03f575375967df7e2e6279e2612de3bd5101e51acb362d7b7  templates/Informe_Fiscalizacion_V01_MACHOTE_FINAL.docx
+8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420  templates/MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx
+4246c9aa11b74a32a59e6048314ec827cfada55f8fd8fe035023ef20a00a1a22  templates/MS_FBI_RD_MACHOTE_APLICACION_V27_EXACTO.docx
+
+PRUEBA DE PARIDAD PWA LOCAL
+- Archivos runtime canónicos comprobados: 35
+- Diferencias SHA-256: 0
+- index.html y Fiscalizacion_BI_V27_FINAL.html: idénticos byte a byte
+
+REGRESIÓN PREVIA A CIERRE
+- Python: 227 aprobadas, 3 omitidas previstas
+- Node aplicación: 81 aprobadas
+- Electron/Desktop: 14 aprobadas
+- CI: PASS
+
+ALCANCE
+Esta tarea no modifica formularios, apariencia, Trámites, Gestión, filtros, alarmas, croquis, importación Excel/JSON, enlaces Metro, informes ni machotes. Solo cambia la arquitectura de distribución y sus compuertas de verificación.
+
+NOTA DE BUILD
+Los workflows GitHub descargan/vendorizan PDF.js y dependencias de compilación antes del empaquetado. El repositorio fuente no requiere contener binarios generados. La instalación nativa final no depende de GitHub para ejecutar una vez instalada.

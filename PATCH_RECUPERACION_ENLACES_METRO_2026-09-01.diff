@@ -1,0 +1,321 @@
+--- a/app/assets/l26_excel_import_core.js
++++ b/app/assets/l26_excel_import_core.js
+@@ -39,14 +39,20 @@
+     const type=attr(cellTag,'t');if(type==='inlineStr'){const m=cellXml.match(/<is\b[^>]*>([\s\S]*?)<\/is>/i);if(!m)return'';let s='';for(const t of m[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/gi))s+=xmlEntityDecode(t[1]);return s}
+     const vm=cellXml.match(/<v\b[^>]*>([\s\S]*?)<\/v>/i);if(!vm)return'';const raw=xmlEntityDecode(vm[1]);if(type==='s')return shared[Number(raw)]??'';if(type==='str'||type==='e')return raw;if(type==='b')return raw==='1';const n=Number(raw);return Number.isFinite(n)?n:raw;
+   }
++  function formulaHyperlinkUrl(cellXml){
++    const fm=String(cellXml||'').match(/<f\b[^>]*>([\s\S]*?)<\/f>/i);if(!fm)return'';
++    const formula=xmlEntityDecode(fm[1]),match=formula.match(/\bHYPERLINK\s*\(\s*"((?:""|[^"])*)"/i);if(!match)return'';
++    const url=match[1].replace(/""/g,'"').trim();return /^https?:\/\/[^\s]+$/i.test(url)?url:'';
++  }
+   function parseSheet(xml,shared,rels){
+-    const rows=[],refs=[];let maxCol=-1;
++    const rows=[],refs=[],formulaLinks={};let maxCol=-1;
+     for(const rm of String(xml||'').matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/gi)){
+       const row=[],rowRefs=[];for(const cm of rm[1].matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>|<c\b([^>]*)\/>/gi)){
+-        const attrs='<c '+(cm[1]||cm[3]||'')+'>',body=cm[2]||'',ref=attr(attrs,'r'),ci=colIndex(ref);if(ci<0)continue;row[ci]=cellValue(body,attrs,shared);rowRefs[ci]=ref;maxCol=Math.max(maxCol,ci);
++        const attrs='<c '+(cm[1]||cm[3]||'')+'>',body=cm[2]||'',ref=attr(attrs,'r'),ci=colIndex(ref);if(ci<0)continue;row[ci]=cellValue(body,attrs,shared);rowRefs[ci]=ref;const formulaUrl=formulaHyperlinkUrl(body);if(ref&&formulaUrl)formulaLinks[ref]=formulaUrl;maxCol=Math.max(maxCol,ci);
+       }rows.push(row);refs.push(rowRefs);
+     }
+     const hyperlinks={};for(const hm of String(xml||'').matchAll(/<hyperlink\b[^>]*\/?>(?:<\/hyperlink>)?/gi)){const tag=hm[0],ref=attr(tag,'ref'),rid=attr(tag,'r:id'),location=attr(tag,'location');if(!ref)continue;const target=rid&&rels[rid]?rels[rid].target:location;if(target)hyperlinks[ref]=target}
++    for(const [ref,url] of Object.entries(formulaLinks))if(!hyperlinks[ref])hyperlinks[ref]=url;
+     return{rows,refs,hyperlinks,maxCol};
+   }
+ 
+--- a/index.html
++++ b/index.html
+@@ -1583,47 +1583,43 @@
+   const params=new URLSearchParams({url:String(c.sourceLink||''),caseId:String(c.id||''),tramite:String(c.general?.tramite||'')});
+   return `l26-reader://open?${params.toString()}`;
+ }
++function openWebSourceLink(url){
++  const target=String(url||DEFAULT_CASE_SOURCE_URL).trim()||DEFAULT_CASE_SOURCE_URL;
++  try{
++    const opened=window.open(target,'_blank');
++    if(opened){try{opened.opener=null}catch(_){}return true}
++  }catch(error){console.warn('Apertura web en nueva pestaña:',error)}
++  try{window.location.href=target;return true}catch(error){console.warn('Apertura web en la pestaña actual:',error);toast(`No se pudo abrir el enlace: ${error?.message||error}`);return false}
++}
+ async function openCaseSource(c){
+-  if(!c.sourceLink)return toast('Este expediente no tiene enlace.');
++  const source=String(c?.sourceLink||DEFAULT_CASE_SOURCE_URL).trim()||DEFAULT_CASE_SOURCE_URL;
+   if(window.L26Android?.openSource){
+     try{
+-      window.L26Android.openSource(JSON.stringify({url:c.sourceLink,caseId:c.id,tramite:c.general?.tramite||''}));
++      window.L26Android.openSource(JSON.stringify({url:source,caseId:c.id,tramite:c.general?.tramite||''}));
+       return;
+     }catch(error){
+-      console.warn('Lector Android interno:',error);
+-      return toast(`No se pudo abrir el lector Android interno: ${error?.message||error}`);
++      console.warn('Lector Android interno; se usará apertura web:',error);
++      return openWebSourceLink(source);
+     }
+   }
+   if(window.l26Desktop?.openSource){
+     try{
+-      const result=await window.l26Desktop.openSource({url:c.sourceLink,caseId:c.id,tramite:c.general?.tramite||''});
++      const result=await window.l26Desktop.openSource({url:source,caseId:c.id,tramite:c.general?.tramite||''});
+       if(result?.opened)return;
+-      return toast('El lector web interno no pudo abrir el enlace. Cierre y vuelva a abrir L-26 en modo escritorio.');
++      console.warn('El lector interno Electron no confirmó apertura; se usará apertura web.');
++      return openWebSourceLink(source);
+     }catch(error){
+-      console.warn('Lector web interno:',error);
+-      return toast(`No se pudo abrir el lector web interno: ${error?.message||error}`);
++      console.warn('Lector web interno; se usará apertura web:',error);
++      return openWebSourceLink(source);
+     }
+   }
+   if(isL26DesktopShell()){
+-    try{
+-      window.location.href=l26DesktopReaderFallbackUrl(c);
+-      return;
+-    }catch(error){
+-      console.warn('Ruta nativa de respaldo del lector:',error);
+-      return toast(`La aplicación de escritorio fue detectada, pero no se pudo abrir el lector interno: ${error?.message||error}`);
+-    }
+-  }
+-  const windowsBrowser=/Windows/i.test(String(navigator.userAgent||navigator.platform||''));
+-  if(windowsBrowser){
+-    try{
+-      window.location.href=l26DesktopReaderFallbackUrl(c);
+-      return toast('L-26 está en modo Web/PWA en Windows. Abriendo el lector interno de la aplicación de escritorio instalada (EXE)…');
+-    }catch(error){
+-      console.warn('No se pudo entregar el enlace al lector Electron:',error);
+-      return toast(`No se pudo abrir el lector de escritorio: ${error?.message||error}`);
+-    }
++    try{window.location.href=l26DesktopReaderFallbackUrl(c);return}
++    catch(error){console.warn('Ruta nativa de respaldo del lector; se usará apertura web:',error);return openWebSourceLink(source)}
+   }
+-  window.open(c.sourceLink,'_blank','noopener,noreferrer');
++  // Historial funcional 2026-08-29: navegador/PWA conserva el fallback web.
++  // El protocolo l26-reader se mantiene solo como respaldo del shell Electron y no bloquea el botón Abrir enlace en PWA.
++  return openWebSourceLink(source);
+ }
+ function caseFieldValue(c,key){const map={tramite:c.general?.tramite,folio:c.general?.folio||c.general?.finca,plano:c.general?.plano,derecho:c.general?.right,owner:c.general?.owner,ownerId:c.general?.ownerId,declarationDate:c.general?.declarationDate,inspectionDate:c.visit?.date,registryArea:c.general?.registryArea,processType:c.general?.processType,province:c.visit?.province,canton:c.visit?.canton,district:c.visit?.district,locality:c.visit?.locality};return String(map[key]||'')}
+ async function applyReadCandidates(c,detected,options={}){
+--- a/Fiscalizacion_BI_V27_FINAL.html
++++ b/Fiscalizacion_BI_V27_FINAL.html
+@@ -1583,47 +1583,43 @@
+   const params=new URLSearchParams({url:String(c.sourceLink||''),caseId:String(c.id||''),tramite:String(c.general?.tramite||'')});
+   return `l26-reader://open?${params.toString()}`;
+ }
++function openWebSourceLink(url){
++  const target=String(url||DEFAULT_CASE_SOURCE_URL).trim()||DEFAULT_CASE_SOURCE_URL;
++  try{
++    const opened=window.open(target,'_blank');
++    if(opened){try{opened.opener=null}catch(_){}return true}
++  }catch(error){console.warn('Apertura web en nueva pestaña:',error)}
++  try{window.location.href=target;return true}catch(error){console.warn('Apertura web en la pestaña actual:',error);toast(`No se pudo abrir el enlace: ${error?.message||error}`);return false}
++}
+ async function openCaseSource(c){
+-  if(!c.sourceLink)return toast('Este expediente no tiene enlace.');
++  const source=String(c?.sourceLink||DEFAULT_CASE_SOURCE_URL).trim()||DEFAULT_CASE_SOURCE_URL;
+   if(window.L26Android?.openSource){
+     try{
+-      window.L26Android.openSource(JSON.stringify({url:c.sourceLink,caseId:c.id,tramite:c.general?.tramite||''}));
++      window.L26Android.openSource(JSON.stringify({url:source,caseId:c.id,tramite:c.general?.tramite||''}));
+       return;
+     }catch(error){
+-      console.warn('Lector Android interno:',error);
+-      return toast(`No se pudo abrir el lector Android interno: ${error?.message||error}`);
++      console.warn('Lector Android interno; se usará apertura web:',error);
++      return openWebSourceLink(source);
+     }
+   }
+   if(window.l26Desktop?.openSource){
+     try{
+-      const result=await window.l26Desktop.openSource({url:c.sourceLink,caseId:c.id,tramite:c.general?.tramite||''});
++      const result=await window.l26Desktop.openSource({url:source,caseId:c.id,tramite:c.general?.tramite||''});
+       if(result?.opened)return;
+-      return toast('El lector web interno no pudo abrir el enlace. Cierre y vuelva a abrir L-26 en modo escritorio.');
++      console.warn('El lector interno Electron no confirmó apertura; se usará apertura web.');
++      return openWebSourceLink(source);
+     }catch(error){
+-      console.warn('Lector web interno:',error);
+-      return toast(`No se pudo abrir el lector web interno: ${error?.message||error}`);
++      console.warn('Lector web interno; se usará apertura web:',error);
++      return openWebSourceLink(source);
+     }
+   }
+   if(isL26DesktopShell()){
+-    try{
+-      window.location.href=l26DesktopReaderFallbackUrl(c);
+-      return;
+-    }catch(error){
+-      console.warn('Ruta nativa de respaldo del lector:',error);
+-      return toast(`La aplicación de escritorio fue detectada, pero no se pudo abrir el lector interno: ${error?.message||error}`);
+-    }
+-  }
+-  const windowsBrowser=/Windows/i.test(String(navigator.userAgent||navigator.platform||''));
+-  if(windowsBrowser){
+-    try{
+-      window.location.href=l26DesktopReaderFallbackUrl(c);
+-      return toast('L-26 está en modo Web/PWA en Windows. Abriendo el lector interno de la aplicación de escritorio instalada (EXE)…');
+-    }catch(error){
+-      console.warn('No se pudo entregar el enlace al lector Electron:',error);
+-      return toast(`No se pudo abrir el lector de escritorio: ${error?.message||error}`);
+-    }
++    try{window.location.href=l26DesktopReaderFallbackUrl(c);return}
++    catch(error){console.warn('Ruta nativa de respaldo del lector; se usará apertura web:',error);return openWebSourceLink(source)}
+   }
+-  window.open(c.sourceLink,'_blank','noopener,noreferrer');
++  // Historial funcional 2026-08-29: navegador/PWA conserva el fallback web.
++  // El protocolo l26-reader se mantiene solo como respaldo del shell Electron y no bloquea el botón Abrir enlace en PWA.
++  return openWebSourceLink(source);
+ }
+ function caseFieldValue(c,key){const map={tramite:c.general?.tramite,folio:c.general?.folio||c.general?.finca,plano:c.general?.plano,derecho:c.general?.right,owner:c.general?.owner,ownerId:c.general?.ownerId,declarationDate:c.general?.declarationDate,inspectionDate:c.visit?.date,registryArea:c.general?.registryArea,processType:c.general?.processType,province:c.visit?.province,canton:c.visit?.canton,district:c.visit?.district,locality:c.visit?.locality};return String(map[key]||'')}
+ async function applyReadCandidates(c,detected,options={}){
+--- a/sw.js
++++ b/sw.js
+@@ -1,4 +1,4 @@
+-const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1-conformidad-v1-windows-desktop-launch-v1-desktop-bridge-fallback-v2-pdf-compat-v1-compact-districts-v1-android-offline-pdf-ocr-v1-rebuild-reader-v2-metro-protocol-handoff-v1-folio-dedupe-posesoria-v1-global-backup-historical-consolidation-v1-release-27.3.9';
++const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1-conformidad-v1-windows-desktop-launch-v1-desktop-bridge-fallback-v2-pdf-compat-v1-compact-districts-v1-android-offline-pdf-ocr-v1-rebuild-reader-v2-metro-protocol-handoff-v1-folio-dedupe-posesoria-v1-global-backup-historical-consolidation-v1-metro-formula-links-v1-web-fallback-v1-release-27.3.9';
+ const CORE=['./','./index.html','./app/index.html','./app/assets/import_rules.js','./app/assets/l26_integrity_core.js','./app/assets/l26_management_core.js','./app/assets/l26_territory_core.js','./app/assets/l26_reader_apply_core.js','./app/assets/l26_excel_import_core.js','./app/assets/l26_croquis_core.js','./app/assets/l26_filter_core.js','./app/assets/l26_pdf_reader.js','./manifest.webmanifest','./favicon-48.png','./apple-touch-icon.png','./icon-192.png','./icon-512.png','./icon-maskable-192.png','./icon-maskable-512.png'];
+ const PDFJS_CACHE='l26-pdfjs-4.10.38-legacy-v2';
+ const PDFJS_ASSETS=['./app/assets/vendor/pdfjs-4.10.38-legacy/pdf.min.mjs','./app/assets/vendor/pdfjs-4.10.38-legacy/pdf.worker.min.mjs'];
+--- a/desktop/test/pwa-desktop-handoff.test.js
++++ b/desktop/test/pwa-desktop-handoff.test.js
+@@ -18,7 +18,7 @@
+   assert.match(main, /process\.argv/);
+ });
+ 
+-test('Windows Web/PWA invokes installed Electron reader instead of browser fallback', async () => {
++test('Windows Web/PWA opens Metro URL directly and does not require installed Electron protocol', async () => {
+   const start = html.indexOf('function isL26DesktopShell()');
+   const end = html.indexOf('function caseFieldValue', start);
+   assert.ok(start >= 0 && end > start);
+@@ -36,11 +36,10 @@
+   vm.createContext(context);
+   vm.runInContext(`${source}\nthis.openCaseSource=openCaseSource;`, context);
+   await context.openCaseSource({ sourceLink: LOGIN, id:'case-1', general:{tramite:'T-1'} });
+-  assert.equal(calls.open.length, 0);
+-  const deepLink = new URL(location.href);
+-  assert.equal(deepLink.protocol, 'l26-reader:');
+-  assert.equal(deepLink.hostname, 'open');
+-  assert.equal(deepLink.searchParams.get('url'), LOGIN);
++  assert.equal(calls.open.length, 1);
++  assert.equal(calls.open[0][0], LOGIN);
++  assert.equal(calls.open[0][1], '_blank');
++  assert.equal(location.href, 'https://l26.example/index.html');
+ });
+ 
+ test('main process decodes exact Metro login URL from deep link', () => {
+--- /dev/null
++++ b/tests/l26_metro_formula_links.test.js
+@@ -0,0 +1,62 @@
++'use strict';
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const fs=require('node:fs');
++const path=require('node:path');
++const zlib=require('node:zlib');
++const vm=require('node:vm');
++const core=require('../app/assets/l26_excel_import_core.js');
++
++const enc=s=>new TextEncoder().encode(s);
++
++function formulaWorkbookEntries(){
++  const workbook=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
++  <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Expedientes" sheetId="1" r:id="rId1"/></sheets></workbook>`;
++  const rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
++  <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`;
++  const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
++  <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>
++    <row r="1"><c r="A1" t="inlineStr"><is><t>Finca</t></is></c><c r="B1" t="inlineStr"><is><t>Enlace</t></is></c><c r="C1" t="inlineStr"><is><t>ID</t></is></c></row>
++    <row r="2"><c r="A2"><v>116422</v></c><c r="B2" t="str"><f>IFERROR(HYPERLINK("https://metro.sarapiqui.go.cr/processes/15173394","Abrir expediente"),"Abrir expediente")</f><v>Abrir expediente</v></c><c r="C2" t="str"><f>IFERROR(HYPERLINK("https://metro.sarapiqui.go.cr/processes/15173394","15173394"),"15173394")</f><v>15173394</v></c></row>
++  </sheetData></worksheet>`;
++  return {'xl/workbook.xml':enc(workbook),'xl/_rels/workbook.xml.rels':enc(rels),'xl/worksheets/sheet1.xml':enc(sheet)};
++}
++
++test('recupera URL Metro desde formula HYPERLINK de Enlace/ID',()=>{
++  const workbook=core.parseXlsxEntries(formulaWorkbookEntries());
++  const imported=core.importRecordsFromWorkbook(workbook);
++  assert.equal(imported.records.length,1);
++  assert.equal(imported.records[0].general.sourceId,'15173394');
++  assert.equal(imported.records[0].general.sourceUrl,'https://metro.sarapiqui.go.cr/processes/15173394');
++});
++
++test('P.C.F.xlsx real conserva el enlace de la Finca 116422 cuando se proporciona como fixture',()=>{
++  const fixture=process.env.L26_PCF_XLSX||'/mnt/data/P.C.F.xlsx';
++  if(!fs.existsSync(fixture)) return;
++  const bytes=fs.readFileSync(fixture);
++  const workbook=core.parseXlsx(bytes,data=>zlib.inflateRawSync(Buffer.from(data)));
++  const imported=core.importRecordsFromWorkbook(workbook);
++  const row=imported.records.find(r=>String(r.general?.finca)==='116422');
++  assert.ok(row,'No se encontró Finca 116422 en P.C.F.xlsx');
++  assert.equal(row.general.sourceId,'15173394');
++  assert.equal(row.general.sourceUrl,'https://metro.sarapiqui.go.cr/processes/15173394');
++});
++
++test('PWA/web conserva fallback web directo para Abrir enlace',async()=>{
++  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
++  const start=html.indexOf('function isL26DesktopShell(){');
++  const end=html.indexOf('function caseFieldValue',start);
++  assert.ok(start>=0&&end>start,'No se encontró el bloque de apertura de enlaces');
++  const opened=[];
++  const context={
++    console,URLSearchParams,DEFAULT_CASE_SOURCE_URL:'https://metro.sarapiqui.go.cr/',
++    navigator:{userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',platform:'Win32'},
++    location:{href:'https://l26.local/',search:''},toast:()=>{},
++    window:{open:(url)=>{opened.push(url);return{opener:{}};}}
++  };
++  context.window.window=context.window;
++  vm.createContext(context);
++  vm.runInContext(html.slice(start,end),context);
++  await context.openCaseSource({id:'c1',sourceLink:'https://metro.sarapiqui.go.cr/processes/15173394',general:{tramite:'T1'}});
++  assert.deepEqual(opened,['https://metro.sarapiqui.go.cr/processes/15173394']);
++});
+--- a/tests/test_android_full_offline_contract.py
++++ b/tests/test_android_full_offline_contract.py
+@@ -55,12 +55,13 @@
+     assert '<h3>Ubicación de la inspección</h3>' in HTML
+ 
+ 
+-def test_windows_web_mode_warning_does_not_claim_chrome_is_open():
++def test_windows_web_mode_uses_functional_web_fallback_instead_of_blocking_warning():
+     start = HTML.index('async function openCaseSource')
+     end = HTML.index('function caseFieldValue', start)
+     body = HTML[start:end]
+     assert 'esta abierto en Chrome/Edge' not in body
+-    assert 'modo Web/PWA' in body or 'versión Web/PWA' in body or 'version Web/PWA' in body
++    assert 'modo Web/PWA' not in body
++    assert 'return openWebSourceLink(source)' in body
+ 
+ def test_android_sync_refuses_to_build_without_local_pdf_runtime():
+     sync = (ROOT / 'scripts/sync_android_assets.py').read_text(encoding='utf-8')
+--- a/tests/test_internal_web_reader_contract.py
++++ b/tests/test_internal_web_reader_contract.py
+@@ -7,7 +7,8 @@
+ 
+ def test_open_case_source_prefers_desktop_internal_reader_with_web_fallback():
+     assert 'window.l26Desktop?.openSource' in HTML
+-    assert "window.open(c.sourceLink,'_blank'" in HTML
++    assert 'function openWebSourceLink(url)' in HTML
++    assert 'return openWebSourceLink(source)' in HTML
+     assert 'caseId:c.id' in HTML
+     assert 'tramite:c.general?.tramite' in HTML
+ 
+--- a/tests/test_windows_desktop_launch_conformity.py
++++ b/tests/test_windows_desktop_launch_conformity.py
+@@ -16,15 +16,14 @@
+     assert 'start msedge' not in text
+ 
+ 
+-def test_windows_browser_mode_does_not_silently_open_source_in_chrome():
++def test_windows_browser_mode_restores_documented_web_fallback():
+     start = HTML.index('async function openCaseSource(c)')
+     end = HTML.index('function caseFieldValue', start)
+     fn = HTML[start:end]
+     assert 'window.l26Desktop?.openSource' in fn
+-    assert 'navigator.userAgent' in fn or 'navigator.platform' in fn
+-    assert 'aplicación de escritorio instalada' in fn
+-    assert 'esta abierto en Chrome/Edge' not in fn
+-    assert "window.open(c.sourceLink,'_blank'" in fn, 'Se conserva fallback para plataformas no Windows'
++    assert 'return openWebSourceLink(source)' in fn
++    assert 'windowsBrowser' not in fn, 'Una PWA de Windows no debe depender del protocolo Electron para abrir Metro'
++    assert 'aplicación de escritorio instalada' not in fn, 'No debe bloquearse la apertura web con el aviso de modo PWA'
+ 
+ 
+ def test_windows_launcher_is_documented_as_required_for_internal_reader():

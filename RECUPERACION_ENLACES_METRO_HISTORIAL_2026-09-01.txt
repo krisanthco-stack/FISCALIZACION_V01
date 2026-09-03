@@ -1,0 +1,75 @@
+L-26 / Fiscalización B.I.
+RECUPERACIÓN DE ENLACES METRO BASADA EN HISTORIAL DEL PROYECTO
+Fecha de auditoría: 2026-09-01
+
+1. OBJETIVO
+Recuperar el comportamiento funcional anterior de importación y apertura de enlaces Metro, usando P.C.F.xlsx como fixture real y sin seguir acumulando parches especulativos.
+
+2. HISTORIAL FUNCIONAL ENCONTRADO DENTRO DEL PROYECTO
+- 2026-08-25, control/AUDITORIA_IMPORTACION_ENLACES_V01.json:
+  release V01_IMPORTACION_ENLACES, base FISCALIZACION_V01-main/index.html; declara detección de enlaces en cualquier columna y controles Abrir/Leer/Adjuntar.
+- 2026-08-26, release/CHANGELOG_L26_20260826.md:
+  declara soporte de hipervínculos y que ID/enlace importado era visible y abrible desde expediente y Gestión.
+- 2026-08-27, release/CHANGELOG_L26_20260827.md, versión V27.3.7-FINAL:
+  declara que si un expediente no posee enlace se usa https://metro.sarapiqui.go.cr/ y que un enlace real importado nunca se sustituye por ese fallback.
+- 2026-08-29, release/CHANGELOG_L26_20260829_INTERNAL_WEB_READER.md:
+  declara que Electron/Windows usa lector interno y que PWA/navegador SIN Electron conserva el fallback anterior al navegador.
+
+Por tanto, la última referencia funcional documentada antes de las regresiones posteriores es el contrato del 2026-08-29, apoyado por la regla de fallback de V27.3.7-FINAL del 2026-08-27 y por el importador de enlaces documentado desde 2026-08-25/26.
+
+Nota de custodia: app_baseline/STATUS.json indica que los bytes exactos originales V26-V27 no están presentes como baseline recuperable. Por eso no se inventa un commit inexistente. Sí se conserva dentro del proyecto el historial/auditoría que define el comportamiento funcional y los parches posteriores que muestran la regresión.
+
+3. REGRESIONES IDENTIFICADAS
+A) Importación XLSX:
+El parser actual app/assets/l26_excel_import_core.js leía el valor cacheado <v> y relaciones <hyperlink>, pero descartaba el contenido de fórmula <f>. P.C.F.xlsx almacena las URLs Metro como fórmulas Excel HYPERLINK(...), por ejemplo:
+  =IFERROR(HYPERLINK("https://metro.sarapiqui.go.cr/processes/15173394","Abrir expediente"),"Abrir expediente")
+Por eso el valor visible/ID sobrevivía, pero la URL se perdía.
+
+B) Apertura PWA/Windows:
+PATCH_LECTOR_WINDOWS_2026-08-31.diff introdujo un bloqueo específico de Windows Web/PWA que mostraba el mensaje para abrir la aplicación de escritorio, desviándose del contrato 2026-08-29 de conservar el fallback web.
+PATCH_METRO_PROTOCOL_HANDOFF_2026-08-31.diff cambió ese bloqueo por un intento obligatorio de l26-reader:// desde PWA. Si el protocolo/EXE no estaba asociado, la apertura seguía sin ser funcional.
+
+4. REPRODUCCIÓN REAL ANTES DE LA CORRECCIÓN CON P.C.F.xlsx
+Parser de la versión previa a esta corrección:
+- hoja detectada: Expedientes
+- registros reconocidos: 539
+- URLs Metro recuperadas: 0
+- Finca 116422: ID 15173394; sourceUrl vacío
+
+Esto demuestra que la pérdida ya ocurría antes del botón Abrir enlace: el enlace real no llegaba al modelo.
+
+5. CORRECCIÓN APLICADA
+- app/assets/l26_excel_import_core.js ahora extrae URL http/https directamente de fórmulas HYPERLINK(...) en <f> y la integra al mismo mapa de hyperlinks usado por el importador.
+- Se conserva prioridad de un hyperlink OOXML real si existe.
+- index.html / Fiscalizacion_BI_V27_FINAL.html restauran el comportamiento histórico:
+  * Android con bridge -> lector Android; si falla -> apertura web.
+  * Electron con l26Desktop.openSource -> lector interno; si falla -> apertura web.
+  * Shell Electron marcado sin bridge -> l26-reader:// como respaldo nativo.
+  * PWA/navegador -> apertura web directa; NO depende de l26-reader ni muestra el bloqueo Web/PWA.
+- Si no existe enlace específico, la aplicación conserva DEFAULT_CASE_SOURCE_URL = https://metro.sarapiqui.go.cr/.
+- sw.js incrementa la clave de caché para que una PWA instalada no retenga la lógica anterior.
+
+6. VALIDACIÓN REAL DESPUÉS DE LA CORRECCIÓN CON P.C.F.xlsx
+- hoja detectada: Expedientes
+- registros reconocidos: 539
+- URLs Metro recuperadas: 539
+- Finca 116422: ID 15173394 -> https://metro.sarapiqui.go.cr/processes/15173394
+- Finca 116432: ID 15162891 -> https://metro.sarapiqui.go.cr/processes/15162891
+- Finca 132195: ID 15450465 -> https://metro.sarapiqui.go.cr/processes/15450465
+
+7. PRUEBAS PERMANENTES AGREGADAS
+- fórmula HYPERLINK sintética: recuperación de URL exacta.
+- P.C.F.xlsx real: Finca 116422 / ID 15173394 / URL exacta.
+- PWA/web Windows sin bridge: Abrir enlace usa window.open con la URL específica y no fuerza l26-reader.
+- prueba Electron mantiene registro/decodificación de l26-reader como respaldo del shell nativo.
+
+8. REGRESIÓN COMPLETA
+scripts/run_ci.py:
+- Python: 210 passed, 3 skipped.
+- Node general: 76 passed.
+- Electron/Desktop: 14 passed.
+- L26 CI gate: PASS.
+
+9. ESTADO DE VALIDACIÓN
+La importación real de P.C.F.xlsx y el comportamiento JavaScript PWA/web están validados automatizadamente con el archivo real.
+El build/instalación física de un nuevo EXE Windows no se ejecuta en este entorno, por lo cual no se declara “RESUELTO Y VALIDADO EN WINDOWS”.

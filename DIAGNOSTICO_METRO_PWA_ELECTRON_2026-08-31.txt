@@ -1,0 +1,44 @@
+L-26 / Fiscalización B.I. — Diagnóstico crítico “Abrir enlace”
+Fecha: 2026-08-31
+URL de aceptación: https://metro.sarapiqui.go.cr/login
+
+CAUSA RAÍZ COMPROBADA
+1. La captura aportada muestra una ventana de aplicación web instalada basada en Chromium: en la barra superior aparecen controles propios del navegador (búsqueda, extensiones y menú de tres puntos). Ese marco no corresponde al BrowserWindow Electron definido en desktop/main.js.
+2. La versión entregada anteriormente mostraba “Instalada” para cualquier display-mode: standalone. Eso hacía que una PWA instalada pareciera una aplicación Electron instalada.
+3. El aviso Web/PWA solo se ejecuta cuando no existe el bridge window.l26Desktop y la ventana tampoco lleva el marcador ?l26Desktop=1 del proceso principal Electron.
+4. Por eso los cambios anteriores en preload/contextBridge podían pasar pruebas y, aun así, la captura seguir mostrando el mismo aviso: la instancia abierta era la PWA, no el runtime Electron que contiene ese preload.
+
+CORRECCIÓN DE ARQUITECTURA APLICADA
+- El instalador Electron registra el protocolo de Windows l26-reader://.
+- Electron también llama app.setAsDefaultProtocolClient('l26-reader').
+- El proceso principal acepta el deep link tanto al iniciar mediante process.argv como cuando Windows abre una segunda instancia.
+- El deep link se convierte de nuevo en el payload del lector y crea la ventana interna WebContentsView.
+- Si el usuario pulsa “Abrir enlace” desde la PWA de Windows, ya no se intenta fingir que existe contextBridge: se entrega el enlace al EXE instalado mediante l26-reader://open?... .
+- Si el usuario está realmente dentro de Electron, window.l26Desktop.openSource continúa siendo la ruta prioritaria.
+- La interfaz distingue “Escritorio”, “Android” y “PWA instalada”.
+- Se incrementó la clave del Service Worker para impedir que la PWA reutilice el HTML anterior.
+
+URL EXACTA
+Las pruebas automatizadas usan literalmente:
+https://metro.sarapiqui.go.cr/login
+
+Se comprueba que la URL se conserva sin modificación al codificarla en el deep link y al decodificarla en el proceso principal Electron.
+
+PRUEBA ROJO → VERDE
+Antes del cambio:
+- El paquete no registraba l26-reader://: FALLÓ.
+- Windows PWA no enviaba Metro al lector Electron: FALLÓ.
+
+Después del cambio:
+- Registro del protocolo: PASS.
+- PWA Windows -> deep link l26-reader:// -> URL Metro exacta: PASS.
+- Decodificación en main.js -> URL Metro exacta: PASS.
+- Suite completa del repositorio: PASS.
+
+BUILD WINDOWS
+Se intentó instalar las dependencias para generar el build real de Windows. El entorno actual no puede resolver registry.npmjs.org (EAI_AGAIN), por lo que no fue posible descargar Electron/electron-builder y construir o ejecutar aquí el .exe.
+Consulte BUILD_WINDOWS_ATTEMPT_METRO_2026-08-31.log.
+
+ESTADO
+CORRECCIÓN DE CÓDIGO REALIZADA, PERO NO VALIDADA EN EJECUTABLE WINDOWS.
+No se declara “RESUELTO Y VALIDADO”.

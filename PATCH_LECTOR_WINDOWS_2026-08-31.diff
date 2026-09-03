@@ -1,0 +1,192 @@
+--- a/index.html
++++ b/index.html
+@@ -1543,6 +1543,13 @@
+   };
+   input.click();
+ }
++function isL26DesktopShell(){
++  try{return new URLSearchParams(location.search).get('l26Desktop')==='1'}catch(_){return false}
++}
++function l26DesktopReaderFallbackUrl(c){
++  const params=new URLSearchParams({url:String(c.sourceLink||''),caseId:String(c.id||''),tramite:String(c.general?.tramite||'')});
++  return `l26-reader://open?${params.toString()}`;
++}
+ async function openCaseSource(c){
+   if(!c.sourceLink)return toast('Este expediente no tiene enlace.');
+   if(window.L26Android?.openSource){
+@@ -1564,6 +1571,15 @@
+       return toast(`No se pudo abrir el lector web interno: ${error?.message||error}`);
+     }
+   }
++  if(isL26DesktopShell()){
++    try{
++      window.location.href=l26DesktopReaderFallbackUrl(c);
++      return;
++    }catch(error){
++      console.warn('Ruta nativa de respaldo del lector:',error);
++      return toast(`La aplicación de escritorio fue detectada, pero no se pudo abrir el lector interno: ${error?.message||error}`);
++    }
++  }
+   const windowsBrowser=/Windows/i.test(String(navigator.userAgent||navigator.platform||''));
+   if(windowsBrowser){
+     return toast('L-26 está ejecutándose en modo Web/PWA. Para usar el lector interno de enlaces en Windows, abra la aplicación de escritorio instalada.');
+@@ -1642,8 +1658,10 @@
+   }catch(error){console.error('Lectura web interna',error);toast(`No se pudo aplicar la lectura de la página: ${error.message||error}`)}
+ }
+ window.l26AndroidReaderData=handleInternalReaderData;
++window.l26DesktopReaderDataFallback=handleInternalReaderData;
++window.l26DesktopReaderErrorFallback=payload=>{const message=payload?.message||'Error del lector web interno.';toast(message)};
+ window.l26Desktop?.onReaderData?.(handleInternalReaderData);
+-window.l26Desktop?.onReaderError?.(payload=>{const message=payload?.message||'Error del lector web interno.';toast(message)});
++window.l26Desktop?.onReaderError?.(window.l26DesktopReaderErrorFallback);
+ 
+ async function uploadPdfDocuments(files){
+   const expediente=String(state.current?.general?.tramite||'').trim();if(!expediente)throw new Error('Complete el número de expediente antes de cargar PDF.');
+--- a/Fiscalizacion_BI_V27_FINAL.html
++++ b/Fiscalizacion_BI_V27_FINAL.html
+@@ -1543,6 +1543,13 @@
+   };
+   input.click();
+ }
++function isL26DesktopShell(){
++  try{return new URLSearchParams(location.search).get('l26Desktop')==='1'}catch(_){return false}
++}
++function l26DesktopReaderFallbackUrl(c){
++  const params=new URLSearchParams({url:String(c.sourceLink||''),caseId:String(c.id||''),tramite:String(c.general?.tramite||'')});
++  return `l26-reader://open?${params.toString()}`;
++}
+ async function openCaseSource(c){
+   if(!c.sourceLink)return toast('Este expediente no tiene enlace.');
+   if(window.L26Android?.openSource){
+@@ -1564,6 +1571,15 @@
+       return toast(`No se pudo abrir el lector web interno: ${error?.message||error}`);
+     }
+   }
++  if(isL26DesktopShell()){
++    try{
++      window.location.href=l26DesktopReaderFallbackUrl(c);
++      return;
++    }catch(error){
++      console.warn('Ruta nativa de respaldo del lector:',error);
++      return toast(`La aplicación de escritorio fue detectada, pero no se pudo abrir el lector interno: ${error?.message||error}`);
++    }
++  }
+   const windowsBrowser=/Windows/i.test(String(navigator.userAgent||navigator.platform||''));
+   if(windowsBrowser){
+     return toast('L-26 está ejecutándose en modo Web/PWA. Para usar el lector interno de enlaces en Windows, abra la aplicación de escritorio instalada.');
+@@ -1642,8 +1658,10 @@
+   }catch(error){console.error('Lectura web interna',error);toast(`No se pudo aplicar la lectura de la página: ${error.message||error}`)}
+ }
+ window.l26AndroidReaderData=handleInternalReaderData;
++window.l26DesktopReaderDataFallback=handleInternalReaderData;
++window.l26DesktopReaderErrorFallback=payload=>{const message=payload?.message||'Error del lector web interno.';toast(message)};
+ window.l26Desktop?.onReaderData?.(handleInternalReaderData);
+-window.l26Desktop?.onReaderError?.(payload=>{const message=payload?.message||'Error del lector web interno.';toast(message)});
++window.l26Desktop?.onReaderError?.(window.l26DesktopReaderErrorFallback);
+ 
+ async function uploadPdfDocuments(files){
+   const expediente=String(state.current?.general?.tramite||'').trim();if(!expediente)throw new Error('Complete el número de expediente antes de cargar PDF.');
+--- a/desktop/main.js
++++ b/desktop/main.js
+@@ -43,6 +43,31 @@
+   }
+ }
+ 
++function desktopReaderRequest(target) {
++  try {
++    const parsed = new URL(target);
++    if (parsed.protocol !== 'l26-reader:' || parsed.hostname !== 'open') return null;
++    return safeReaderPayload({
++      url: parsed.searchParams.get('url'),
++      caseId: parsed.searchParams.get('caseId'),
++      tramite: parsed.searchParams.get('tramite'),
++    });
++  } catch {
++    return null;
++  }
++}
++
++function deliverToMainWindow(channel, payload, fallbackName) {
++  if (!mainWindow || mainWindow.isDestroyed()) return false;
++  mainWindow.webContents.send(channel, payload);
++  const serialized = JSON.stringify(payload);
++  const script = `if(!window.l26Desktop){window[${JSON.stringify(fallbackName)}]?.(${serialized})}`;
++  void mainWindow.webContents.executeJavaScript(script, true).catch(error => {
++    console.warn('Fallback del bridge de escritorio no disponible:', error?.message || error);
++  });
++  return true;
++}
++
+ async function openExternal(target) {
+   if (isExternalSafeUrl(target) && !isLocalUrl(target)) {
+     await shell.openExternal(target);
+@@ -205,7 +230,7 @@
+     return { sent:false, reason:'empty' };
+   }
+   if (!mainWindow || mainWindow.isDestroyed()) return { sent:false, reason:'main-window-missing' };
+-  mainWindow.webContents.send('l26:reader-data', { caseId, tramite, text, url:String(result?.url || view.webContents.getURL()), title:String(result?.title || view.webContents.getTitle()), mode:'page' });
++  deliverToMainWindow('l26:reader-data', { caseId, tramite, text, url:String(result?.url || view.webContents.getURL()), title:String(result?.title || view.webContents.getTitle()), mode:'page' }, 'l26DesktopReaderDataFallback');
+   sendReaderState(context, { status:'Página enviada a L-26.' });
+   return { sent:true };
+ }
+@@ -256,7 +281,7 @@
+     return { sent:false, reason:'empty' };
+   }
+   if (!mainWindow || mainWindow.isDestroyed()) return { sent:false, reason:'main-window-missing' };
+-  mainWindow.webContents.send('l26:reader-data', { caseId, tramite, text, url:String(result?.url || view.webContents.getURL()), title:String(result?.title || view.webContents.getTitle()), mode:'area', ocr:ocrUsed });
++  deliverToMainWindow('l26:reader-data', { caseId, tramite, text, url:String(result?.url || view.webContents.getURL()), title:String(result?.title || view.webContents.getTitle()), mode:'area', ocr:ocrUsed }, 'l26DesktopReaderDataFallback');
+   sendReaderState(context, { status:ocrUsed?'Área reconocida por OCR y enviada a L-26.':'Área enviada a L-26.' });
+   return { sent:true, ocr:ocrUsed };
+ }
+@@ -346,16 +371,23 @@
+   win.webContents.on('will-navigate', (event, target) => {
+     if (isLocalUrl(target)) return;
+     event.preventDefault();
++    const readerPayload = desktopReaderRequest(target);
++    if (readerPayload) {
++      createReaderWindow(readerPayload);
++      return;
++    }
+     void openExternal(target);
+   });
+ 
+   win.webContents.setWindowOpenHandler(({ url }) => {
+-    void openExternal(url);
++    const readerPayload = desktopReaderRequest(url);
++    if (readerPayload) createReaderWindow(readerPayload);
++    else void openExternal(url);
+     return { action: 'deny' };
+   });
+ 
+   win.once('ready-to-show', () => win.show());
+-  void win.loadURL(`${localOrigin}/`);
++  void win.loadURL(`${localOrigin}/?l26Desktop=1`);
+   mainWindow = win;
+   return win;
+ }
+--- a/sw.js
++++ b/sw.js
+@@ -1,4 +1,4 @@
+-const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1-conformidad-v1-windows-desktop-launch-v1-pdf-compat-v1-compact-districts-v1-android-offline-pdf-ocr-v1-rebuild-reader-v2-release-27.3.9';
++const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1-conformidad-v1-windows-desktop-launch-v1-desktop-bridge-fallback-v2-pdf-compat-v1-compact-districts-v1-android-offline-pdf-ocr-v1-rebuild-reader-v2-release-27.3.9';
+ const CORE=['./','./index.html','./app/index.html','./app/assets/import_rules.js','./app/assets/l26_integrity_core.js','./app/assets/l26_management_core.js','./app/assets/l26_territory_core.js','./app/assets/l26_reader_apply_core.js','./app/assets/l26_excel_import_core.js','./app/assets/l26_croquis_core.js','./app/assets/l26_filter_core.js','./app/assets/l26_pdf_reader.js','./manifest.webmanifest','./favicon-48.png','./apple-touch-icon.png','./icon-192.png','./icon-512.png','./icon-maskable-192.png','./icon-maskable-512.png'];
+ const PDFJS_CACHE='l26-pdfjs-4.10.38-legacy-v2';
+ const PDFJS_ASSETS=['./app/assets/vendor/pdfjs-4.10.38-legacy/pdf.min.mjs','./app/assets/vendor/pdfjs-4.10.38-legacy/pdf.worker.min.mjs'];
+--- a/tests/test_windows_desktop_launch_conformity.py
++++ b/tests/test_windows_desktop_launch_conformity.py
+@@ -36,3 +36,15 @@
+ def test_service_worker_refreshes_windows_desktop_guard_change():
+     sw = (ROOT / 'sw.js').read_text(encoding='utf-8')
+     assert 'windows-desktop-launch-v1' in sw
++
++
++def test_windows_desktop_reader_survives_missing_preload_bridge():
++    main = (ROOT / 'desktop' / 'main.js').read_text(encoding='utf-8')
++    start = HTML.index('async function openCaseSource(c)')
++    end = HTML.index('function caseFieldValue', start)
++    fn = HTML[start:end]
++    assert 'l26Desktop=1' in main, 'Electron debe marcar inequívocamente la ventana principal como escritorio'
++    assert 'l26-reader:' in main, 'El proceso principal debe interceptar una ruta nativa de respaldo'
++    assert 'l26DesktopReaderFallbackUrl(c)' in fn, 'Abrir enlace debe invocar el fallback nativo si el preload no expone l26Desktop'
++    assert 'l26-reader://open' in HTML, 'El fallback debe usar el protocolo interno interceptado por Electron'
++    assert 'l26DesktopReaderDataFallback' in HTML, 'La lectura debe poder regresar al expediente aun sin el bridge preload'

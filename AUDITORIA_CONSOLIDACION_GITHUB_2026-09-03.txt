@@ -1,0 +1,66 @@
+AUDITORIA CONSOLIDACION GITHUB L-26 — 2026-09-03
+================================================================
+Base auditada: 5044e35
+Rama de consolidación: consolidacion-final
+
+ARCHIVOS MODIFICADOS:
+  - .github/workflows/android.yml
+  - .github/workflows/ci.yml
+  - .github/workflows/pages.yml
+  - .github/workflows/release.yml
+  - .github/workflows/windows.yml
+  - android/gradle.properties
+  - scripts/verify_packaged_runtime.py
+  - tests/test_android_full_offline_contract.py
+  - tests/test_packaged_runtime_verifier.py
+  - tests/test_windows_standalone_build_contract.py
+
+Cambios inesperados fuera del alcance: 0
+
+PARIDAD DE ARCHIVOS PROTEGIDOS CONTRA LA BASE:
+  index.html: IGUAL  sha256=526f9dfcfbbbf9796fdb196e50190755a0c9451a2d88481909e7a3ca43b2635f
+  Fiscalizacion_BI_V27_FINAL.html: IGUAL  sha256=526f9dfcfbbbf9796fdb196e50190755a0c9451a2d88481909e7a3ca43b2635f
+  sw.js: IGUAL  sha256=b0e95a3319f42a6c4329a12c0dab05202357c33deac5df2af7de58f54e5d9368
+  manifest.webmanifest: IGUAL  sha256=9fc06d8cf0dc75e3260300258782979203e6b2287d06751da10bb5c5c5c0432d
+  desktop/main.js: IGUAL  sha256=8406f09231a73c443a6a92be2e813a6d989b61ecf8997f2487caffe4be34049c
+  desktop/app-preload.js: IGUAL  sha256=66e04de9525a24747bc3875b5ba61f850a0b43d7c9f9ad16d771b5fda0031eb2
+  desktop/reader-preload.js: IGUAL  sha256=2b0dec4e814403ee41aaef39e959ca76ab2cd42decb6e41ab01c80a384f9de13
+  desktop/reader.html: IGUAL  sha256=53d0fc71637ddc5dc4415c235b9b3060515ccf6d23e36056b37688653a27b489
+
+MACHOTES / DOCX:
+  templates/Informe_Fiscalizacion_V01_MACHOTE_FINAL.docx: IGUAL  sha256=81214b02982f2dd03f575375967df7e2e6279e2612de3bd5101e51acb362d7b7
+  templates/MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx: IGUAL  sha256=8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420
+  templates/MS_FBI_RD_MACHOTE_APLICACION_V27_EXACTO.docx: IGUAL  sha256=4246c9aa11b74a32a59e6048314ec827cfada55f8fd8fe035023ef20a00a1a22
+  templates/final/Informe_Fiscalizacion_V01_MACHOTE_FINAL.docx: IGUAL  sha256=81214b02982f2dd03f575375967df7e2e6279e2612de3bd5101e51acb362d7b7
+  templates/final/MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx: IGUAL  sha256=8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420
+  templates/originales/MACHOTE_APROBACION-F.docx: IGUAL  sha256=0a598478b0a9585cd0a2327f0205a1ff8fabb098d86fcd7a8f76b2c989b9ac7a
+  templates/originales/MACHOTE_RECHAZO.docx: IGUAL  sha256=7be4b0a3e129826e103ca6f8e3f0f80142d10a82d1379786b364f71b00e07e82
+  templates/originales/MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx: IGUAL  sha256=8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420
+  templates/parametrized/Informe_Fiscalizacion_APLICACION_V1.docx: IGUAL  sha256=03d3f69dd50b9ddd16dfff75c7b437def87c0d031c4edf442abf9d7d4772d31a
+  templates/parametrized/MS_FBI_RD_MACHOTE_APLICACION_V1.docx: IGUAL  sha256=88fa3cde79b60da6bf311a7f7417e287c9b8489447e8356779bbc2d5350d064a
+  audit/active/AUDITORIA_FUNCIONAL_Y_REGRESION_V26_V27_FINAL.docx: IGUAL  sha256=860a6d3082e5cdd52650f0dd1937e8882092b93894602aec9dc822dcc5396b72
+  audit/history/AUDITORIA_ESPECIFICACION_INFORMES_MS_FBI_RD_V2.docx: IGUAL  sha256=b4839ef4b4818b58e7b47953521559a684c46c10d0bb3e3f4eb4c518b1aff9a6
+  audit/history/AUDITORIA_ESPECIFICACION_SUBMODULO_MS_FBI_RD_V1.docx: IGUAL  sha256=6e6c522bb325e06427e176477a97f986077414019e9bdb294963987f33b11582
+  audit/history/AUDITORIA_FUNCIONAL_Y_REGRESION_V26_V27_FINAL.docx: IGUAL  sha256=860a6d3082e5cdd52650f0dd1937e8882092b93894602aec9dc822dcc5396b72
+
+CONTRATOS CONSOLIDADOS:
+  AndroidX activo: OK
+  ROOT definido en verificador: OK
+  Windows acepta npm.cmd: OK
+  Workflows instalan lxml: OK
+  Filtro ALARMAS +1 AÑO presente: OK
+  Fallback Metro base presente: OK
+
+PRUEBAS EJECUTADAS:
+  - P.C.F.xlsx real: PASS (Finca 116422 conserva https://metro.sarapiqui.go.cr/processes/15173394)
+  - P.C.F(1).xlsx real: PASS (contador de alarmas sin error Date)
+  - Contratos Android/Windows/verificador: 19 PASS
+  - Python completo: 229 PASS, 3 skipped previstos
+  - Node aplicación: 81 PASS
+  - Electron: 14 PASS
+  - L26 CI gate: PASS
+  - 5 workflows YAML: sintaxis válida
+
+LIMITACION DE VALIDACION DE PLATAFORMA:
+  - En este entorno Linux no se generó un APK nuevo ni un Setup.exe/Portable.exe Windows.
+  - La liberación de Android/Windows requiere GitHub Actions verde y artefactos verificados sobre el mismo commit consolidado.

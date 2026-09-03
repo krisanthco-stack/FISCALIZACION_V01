@@ -1,0 +1,49 @@
+L-26 / Fiscalización B.I. V27.3.9
+AUDITORÍA DE CAMBIO — FOLIO ÚNICO + INFORMACIÓN POSESORIA
+Fecha: 2026-08-31
+
+REGLAS APROBADAS
+1. Los trámites se cuentan por Folio/Finca único.
+2. Al cargar Excel o JSON, si el Folio/Finca ya existe, no se crea otro trámite: se completa/actualiza el registro existente preservando sus datos no vacíos.
+3. Sin Folio ni Finca, el registro se trata como caso sin identidad registral para conteo y se mantiene individual; en Trámites se visualiza “Información posesoria”.
+4. En Información General, la casilla “Información posesoria” se muestra solamente cuando Folio y Finca están vacíos.
+5. Si aparece Folio o Finca, la casilla posesoria se oculta y se restablece a falso.
+
+EVIDENCIA TDD
+- RED inicial: la prueba de Excel devolvía 2 registros para el mismo Folio cuando cambiaba trámite/plano/derecho.
+- RED inicial: no existía búsqueda JSON por Folio/Finca.
+- RED inicial: no existía el control de Información posesoria en la interfaz.
+- RED adicional: un Folio histórico presente tanto en Activos como en Gestión producía active=1 aunque total=1 y management=1.
+- GREEN: las pruebas específicas pasan luego del cambio, incluida active=0 para ese Folio ya trasladado.
+
+ARCHIVOS DE PRODUCCIÓN MODIFICADOS
+- index.html
+- Fiscalizacion_BI_V27_FINAL.html
+- sw.js
+- app/assets/import_rules.js
+- app/assets/l26_excel_import_core.js
+- app/assets/l26_integrity_core.js
+- app/assets/l26_management_core.js
+
+PRUEBAS AÑADIDAS/MODIFICADAS
+- tests/l26_folio_posesoria_import.test.js (nuevo)
+- tests/test_posesoria_folio_contract.py (nuevo)
+- tests/import_rules.test.js
+- tests/l26_transaction_identity.test.js
+- tests/test_compact_district_layout.py
+- tests/test_l26_20260827_requests.py
+- tests/test_l26_release_contract.py
+
+RESULTADO CI ANTES DEL EMPAQUETADO FINAL
+- Python: 200 aprobadas, 1 omitida prevista.
+- Node aplicación: 66 aprobadas, 0 fallos.
+- Node escritorio/Electron: 14 aprobadas, 0 fallos.
+- Compuerta: L26 CI gate: PASS.
+
+MACHOTES OFICIALES
+- Informe_Fiscalizacion_V01_MACHOTE_FINAL.docx: SHA-256 idéntico a la versión fuente.
+- MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx: SHA-256 idéntico a la versión fuente.
+- No se modificó estructura, texto, maquetación ni contenido de los machotes.
+
+NOTA DE LIBERACIÓN
+Este documento registra la comprobación de código y pruebas automatizadas. El manifiesto SHA-256 y una segunda ejecución de CI se realizan sobre una extracción nueva del ZIP final antes de entregar.

@@ -1,0 +1,15 @@
+L-26 — REPOSITORIO LISTO PARA GITHUB
+Fecha: 2026-09-02
+Rama principal: main
+
+Este repositorio contiene la misma base funcional usada para el constructor local del instalador autónomo.
+No contiene un instalador precompilado; los workflows de GitHub generan Setup + Portable cuando GitHub Actions tiene acceso a las dependencias.
+
+Para publicar/actualizar un repositorio GitHub existente:
+  SUBIR_A_GITHUB.cmd https://github.com/USUARIO/REPOSITORIO.git
+
+O manualmente:
+  git remote add origin https://github.com/USUARIO/REPOSITORIO.git
+  git push -u origin main
+
+Se requiere autenticación Git/GitHub en la PC que realiza el push.

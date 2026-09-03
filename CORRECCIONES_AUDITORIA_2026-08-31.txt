@@ -1,0 +1,73 @@
+L-26 / FISCALIZACIÓN B.I. — CORRECCIONES DE AUDITORÍA
+Fecha: 2026-08-31
+Base: V27.3.9 FINAL_FOLIO_POSESORIA_SIN_DUPLICADOS
+
+OBJETIVO
+Corregir los puntos pendientes detectados por la auditoría experta sin alterar los machotes oficiales ni eliminar información existente.
+
+1. DUPLICADOS HISTÓRICOS POR FOLIO/FINCA
+- Se añadió consolidación física al iniciar la aplicación.
+- Solo se consolidan registros con Folio/Finca no vacío y normalizado.
+- Los expedientes sin Folio/Finca (Información posesoria) permanecen separados.
+- Antes de eliminar un duplicado físico se crea copia recuperable del caso, fotografías y documentos.
+- Se selecciona un superviviente determinista, se completan sus campos vacíos con datos de los duplicados y se combinan historiales/metadatos.
+- Fotografías y documentos se remapean al expediente superviviente.
+- Documentos equivalentes por SHA-256/documentKey se deduplican.
+- Los registros duplicados se eliminan físicamente solo después de guardar respaldo y relinkear adjuntos.
+- La migración queda registrada en integrityMigration del expediente superviviente.
+
+2. RESPALDO JSON / ZIP GLOBAL COMPLETO
+- Se añadieron botones "Descargar JSON completo" y "Descargar ZIP completo" en Trámites.
+- El respaldo global contiene los seis almacenes persistentes de IndexedDB:
+  cases, photos, documents, recoveryCases, recoveryPhotos y recoveryDocuments.
+- Fotografías/PDF y sus copias de recuperación se serializan como base64 dentro del JSON.
+- El ZIP incluye manifest.json y respaldo_completo.json.
+- Cargar JSON/ZIP reconoce el esquema FiscalizacionBIGlobalExport.
+- La restauración es no destructiva: combina los trámites por Folio, preserva datos actuales no vacíos y restaura adjuntos.
+- Se añadieron defensas contra colisión de IDs: una foto/documento/respaldo local con el mismo ID no es sobrescrito por un archivo importado de otro expediente.
+- Los respaldos de recuperación se remapean al expediente consolidado sin modificar el contenido histórico original del snapshot.
+
+3. PRUEBAS FUNCIONALES DE LAS CORRECCIONES
+- Pruebas de código real de consolidateHistoricalFolioDuplicates extraída del index.html.
+- Prueba de eliminación física de duplicado y remapeo de fotografía/PDF.
+- Prueba de respaldo global con Blob real -> base64 -> Blob y verificación exacta de bytes.
+- Prueba de colisión de IDs y remapeo de recuperación.
+- Pruebas contractuales de UI/importación.
+- Pruebas del verificador de artefactos Windows/Android.
+
+4. VERIFICACIÓN DEL ARTEFACTO EMPAQUETADO
+Se añadió scripts/verify_packaged_runtime.py y se integró a GitHub Actions.
+Windows:
+- exige win-unpacked/resources/app.asar;
+- comprueba que app.asar contenga l26-reader y reader-preload.js;
+- comprueba resources/app/index.html, sw.js y l26_integrity_core.js;
+- comprueba el runtime PDF.js offline en resources/app.
+Android:
+- abre el APK como ZIP;
+- comprueba index.html y l26_integrity_core.js dentro de assets/www;
+- exige PDF.js + worker + cmaps + standard_fonts dentro del APK.
+Un build que omita estos componentes falla antes de publicarse.
+
+5. REGRESIÓN AUTOMÁTICA FINAL (CARPETA DE TRABAJO)
+Comando: python scripts/run_ci.py
+Resultado:
+- Pytest: 210 aprobadas, 3 omitidas por condiciones de entorno.
+- Node aplicación: 73 aprobadas, 0 fallos.
+- Electron/Desktop: 14 aprobadas, 0 fallos.
+- Gate: L26 CI gate: PASS.
+
+6. MACHOTES
+Se compararon por SHA-256 contra la base anterior. Sin cambios.
+- Informe_Fiscalizacion_V01_MACHOTE_FINAL.docx: 81214b02982f2dd03f575375967df7e2e6279e2612de3bd5101e51acb362d7b7
+- MS-FBI-RD-01-2026_RECTIFICACION_FINAL.docx: 8526e0335c31a755334c7c464fe16e5d1c088d6a908d90207990177605722420
+
+7. LIMITACIONES DE VALIDACIÓN FÍSICA DEL ENTORNO
+- Chromium/Playwright fue invocado expresamente para las pruebas E2E, pero la navegación a 127.0.0.1 está bloqueada por la política del entorno con net::ERR_BLOCKED_BY_ADMINISTRATOR. Por ello esas pruebas permanecen condicionadas al entorno y no se consideran ejecutadas aquí.
+- No existen node_modules de Electron en este entorno, por lo que no se generó ni ejecutó un .exe Windows real en esta sesión. Los workflows sí construyen y ahora verifican la estructura del artefacto antes de publicarlo.
+- El árbol fuente no contiene físicamente PDF.js vendor porque el workflow lo descarga de forma fijada antes de empaquetar. La sincronización Android local se detiene correctamente si faltan esos recursos; el workflow debe vendorizar y el nuevo verificador rechaza un APK que no los incluya.
+- No se ejecutó un APK físico en teléfono/tablet en modo avión en este entorno.
+
+ESTADO CORRECTO
+CORRECCIONES DE CÓDIGO Y REGRESIÓN EJECUTADAS.
+VALIDACIÓN FÍSICA DE EXE/APK PENDIENTE POR LIMITACIONES DEL ENTORNO.
+No se declara "RESUELTO Y VALIDADO" para Windows/Android hasta ejecutar los binarios reales en los dispositivos objetivo.

@@ -9,13 +9,22 @@
     "INFORME TÉCNICO + RESOLUCIÓN",
     "SOLICITUD DE RECTIFICACIÓN MS_FBI_RD"
   ],
-  "load_note": "Paquete ejecutable y de control. Abrir index.html. app/index.html es un acceso de compatibilidad que redirige al único punto de entrada canónico para evitar cargar una versión antigua.",
+  "load_note": "Repositorio fuente listo para GitHub. Los usuarios Windows/Android deben instalar los EXE/APK generados por GitHub Actions; index.html es la fuente web canónica, no el sustituto del lector nativo.",
   "portable_archive_requirement": "single_root_directory",
   "application_entrypoint": "index.html",
   "portable_entrypoint": "index.html",
   "application_executable_present": true,
-  "application_mode": "offline_pwa_with_manual_update_and_legacy_data_recovery",
-  "notes": "Executable recovery build created from the accessible V26-V27 functional contract and approved masters. Original V26-V27 source bytes were not present.",
+  "application_mode": "source_repo_with_pwa_electron_android_wrappers_and_legacy_data_recovery",
+  "notes": "Fuente consolidada V27.3.9 con wrappers Electron/Android y workflows de distribución. Los binarios nativos se generan en GitHub Actions.",
   "canonical_entrypoint": "index.html",
-  "compatibility_entrypoint": "app/index.html"
+  "compatibility_entrypoint": "app/index.html",
+  "native_binaries_present": false,
+  "native_distribution": "github_actions_builds_exe_and_apk",
+  "native_artifacts": [
+    "Fiscalizacion-L26-Setup-<version>.exe",
+    "Fiscalizacion-L26-Android.apk"
+  ],
+  "source_of_truth": "github_main",
+  "runtime_distribution_manifest": "config/runtime_distribution_manifest.json",
+  "distribution_parity_policy": "Windows, Android y PWA deben empaquetar bytes runtime del mismo commit; cualquier diferencia SHA-256 bloquea la publicación."
 }

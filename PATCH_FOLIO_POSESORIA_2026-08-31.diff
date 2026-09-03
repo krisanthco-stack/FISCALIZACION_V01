@@ -1,0 +1,584 @@
+--- a/index.html
++++ b/index.html
+@@ -631,6 +631,7 @@
+       <div class="grid">
+         <label class="field col-3"><span class="required">Número de expediente / trámite</span><input data-path="general.tramite" id="tramiteLookup" placeholder="Ej. BI-2026-0001"><small class="help">Al salir del campo, busca un expediente existente en Trámites de Fiscalización y completa sus datos.</small></label>
+         <label class="field col-3"><span>Número de finca registral</span><input data-path="general.finca" placeholder="Provincia-finca-derecho"></label>
++        <div class="field col-3" id="posesoriaOption" hidden><span>Información posesoria</span><label class="check"><input type="checkbox" data-path="general.informacionPosesoria"> Sí, corresponde a información posesoria</label></div>
+         <label class="field col-3"><span>Número de plano catastrado</span><input data-path="general.plano" placeholder="Ej. H-1234567-2024"></label>
+         <label class="field col-3"><span>Área según registro (m²)</span><input data-path="general.registryArea" inputmode="decimal" type="number" min="0" step="0.01" placeholder="Dato registral; independiente de construcciones"></label>
+         <label class="field col-4"><span>Propietario registral</span><input data-path="general.owner"></label>
+@@ -1303,7 +1304,7 @@
+   syncMeta:{centralRevision:0,centralUpdatedAt:'',assignedTo:'',leaseUntil:'',status:'pending',lastAttemptAt:'',lastSuccessAt:'',lastError:'',conflicts:[],retryCount:0,nextRetryAt:''},
+   localBase:{visible:true,transferredAt:'',reason:''},
+   management:{notified:false,notifiedAt:'',registered:false,registeredAt:''},
+-  general:{tramite:'',inspectionNumber:'',folio:'',declarationDate:'',finca:'',plano:'',right:'',sourceId:'',idDerecho:'',registryArea:'',owner:'',ownerId:'',processType:'',observations:'',managementObservation:''},
++  general:{tramite:'',inspectionNumber:'',folio:'',declarationDate:'',finca:'',informacionPosesoria:false,plano:'',right:'',sourceId:'',idDerecho:'',registryArea:'',owner:'',ownerId:'',processType:'',observations:'',managementObservation:''},
+   visit:{day:dayName(today()),date:today(),time:timeNow(),province:'Heredia',canton:'Sarapiquí',district:'',locality:'',accessAuthorized:false,photoAuthorized:false,interiorInspected:false,ownerInterview:false,documentsReviewed:false,limitations:''},
+   terrain:{topography:'',slope:'',streetLevel:'',streetLevelDifference:'',agroDeclared:'',agroActivity:'',waterAffected:'',waterType:'',waterRelation:'',waterNotes:'',notes:'',services1Code:'',services2Code:'',additionalServices:[]},
+   road:{ontCode:'',surface:'',accessType:'',notes:''},
+@@ -1416,6 +1417,9 @@
+   c.sourceLink=String(c.sourceLink||c.link||c.url||DEFAULT_CASE_SOURCE_URL).trim()||DEFAULT_CASE_SOURCE_URL;
+   c.general.sourceId=String(c.general.sourceId||c.sourceId||c.idImportado||'').trim();
+   c.general.idDerecho=String(c.general.idDerecho||c.idDerecho||'').trim();
++  const posesoriaRaw=c.general.informacionPosesoria??c.general.posesoria??c.informacionPosesoria??c.posesoria??false;
++  c.general.informacionPosesoria=posesoriaRaw===true||['si','sí','true','1','yes'].includes(String(posesoriaRaw).trim().toLowerCase());
++  if(c.general.folio||c.general.finca)c.general.informacionPosesoria=false;
+   if(c.terrain.waterAffected==='Colinda con'){c.terrain.waterAffected='Afectado';if(!c.terrain.waterRelation)c.terrain.waterRelation='Colinda';}
+   if(c.terrain.waterAffected==='Sí')c.terrain.waterAffected='Afectado';
+   if(c.report.fiscalization?.decision&& !c.report.fiscalization.finalOutcome && ['ACEPTAR','OBJETAR'].includes(c.report.fiscalization.decision))c.report.fiscalization.finalOutcome=c.report.fiscalization.decision;
+@@ -1767,10 +1771,11 @@
+   });
+   $$('[data-array]').forEach(el=>el.checked=(getPath(state.current,el.dataset.array)||[]).includes(el.value));
+ }
++function refreshPosesoriaOption(){const host=$('#posesoriaOption');if(!host||!state.current)return;const hasRegistry=Boolean(String(state.current.general?.folio||'').trim()||String(state.current.general?.finca||'').trim());host.hidden=hasRegistry;if(hasRegistry&&state.current.general?.informacionPosesoria){state.current.general.informacionPosesoria=false;const checkbox=host.querySelector('[data-path="general.informacionPosesoria"]');if(checkbox)checkbox.checked=false}}
+ function captureStartText(c=state.current){const raw=c?.captureStartedAt||c?.createdAt||'';if(!raw)return '';const d=new Date(raw);return Number.isNaN(d.getTime())?String(raw):d.toLocaleString('es-CR')}
+ function updateCaptureStartedDisplay(){const el=$('#captureStartedDisplay');if(el)el.value=captureStartText()}
+ function ensureCaptureStarted(){if(state.current&&!state.current.captureStartedAt)state.current.captureStartedAt=new Date().toISOString();if(state.current&&state.current.status==='Asignado')state.current.status='En proceso';updateCaptureStartedDisplay()}
+-function handleBoundInput(e){const el=e.target;ensureCaptureStarted();if(el.dataset.path){if(el.type==='radio'&&!el.checked)return;let v=el.type==='checkbox'?el.checked:el.value;setPath(state.current,el.dataset.path,v);if(el.dataset.path==='visit.date'){state.current.visit.day=dayName(v);const dayEl=document.querySelector('[data-path="visit.day"]');if(dayEl)dayEl.value=state.current.visit.day}markDirty()}else if(el.dataset.array){let arr=getPath(state.current,el.dataset.array)||[];arr=el.checked?[...new Set([...arr,el.value])]:arr.filter(x=>x!==el.value);setPath(state.current,el.dataset.array,arr);markDirty()}}
++function handleBoundInput(e){const el=e.target;ensureCaptureStarted();if(el.dataset.path){if(el.type==='radio'&&!el.checked)return;let v=el.type==='checkbox'?el.checked:el.value;setPath(state.current,el.dataset.path,v);if(el.dataset.path==='visit.date'){state.current.visit.day=dayName(v);const dayEl=document.querySelector('[data-path="visit.day"]');if(dayEl)dayEl.value=state.current.visit.day}if(el.dataset.path==='general.folio'||el.dataset.path==='general.finca')refreshPosesoriaOption();markDirty()}else if(el.dataset.array){let arr=getPath(state.current,el.dataset.array)||[];arr=el.checked?[...new Set([...arr,el.value])]:arr.filter(x=>x!==el.value);setPath(state.current,el.dataset.array,arr);markDirty()}}
+ 
+ document.addEventListener('input',handleBoundInput);document.addEventListener('change',handleBoundInput);
+ 
+@@ -1863,7 +1868,7 @@
+ const CONSTRUCTION_FISCAL_KEYS=['constructionTypesMatch','constructionAreasMatch','constructionCountMatch','constructionValuesMatch'];
+ function hasRegisteredConstructions(c=state.current){return Boolean(c&&Array.isArray(c.constructions)&&c.constructions.length)}
+ function enforceConstructionFiscalizationApplicability(c=state.current){if(!c?.report?.fiscalization)return false;const applies=hasRegisteredConstructions(c);if(!applies)CONSTRUCTION_FISCAL_KEYS.forEach(k=>c.report.fiscalization[k]='No aplica');return applies}
+-function renderAll(){enforceConstructionFiscalizationApplicability();syncRectificationFromCase(state.current);bindStaticFields();updateCaptureStartedDisplay();updateWaterDetails();autoSelectAgroFromTramite();updateTerrainAgroUI();updateStreetLevelCompact();$('#caseCode').textContent=state.current.general.tramite||`BORRADOR ${state.current.id.slice(0,8).toUpperCase()}`;renderConstructions();refreshAssociationSelectors();renderPhotos();renderPdfDocuments();refreshDerived();updateLocationStatus();renderAudit();renderSignatures();renderValuationAnnex();renderWorkflow();refreshRectificationOutput();refreshSelectionControls();refreshPersistentAccordionSummaries();}
++function renderAll(){enforceConstructionFiscalizationApplicability();syncRectificationFromCase(state.current);bindStaticFields();refreshPosesoriaOption();updateCaptureStartedDisplay();updateWaterDetails();autoSelectAgroFromTramite();updateTerrainAgroUI();updateStreetLevelCompact();$('#caseCode').textContent=state.current.general.tramite||`BORRADOR ${state.current.id.slice(0,8).toUpperCase()}`;renderConstructions();refreshAssociationSelectors();renderPhotos();renderPdfDocuments();refreshDerived();updateLocationStatus();renderAudit();renderSignatures();renderValuationAnnex();renderWorkflow();refreshRectificationOutput();refreshSelectionControls();refreshPersistentAccordionSummaries();}
+ function totalConstructionArea(){return state.current.constructions.filter(c=>c.quantityUnit==='m²').reduce((sum,c)=>sum+num(c.area),0)}
+ function totalConstructionLinear(){return state.current.constructions.reduce((sum,c)=>sum+(c.quantityUnit==='ML'?num(c.area):c.quantityUnit==='km'?num(c.area)*1000:0),0)}
+ function totalConstructionUnits(){return state.current.constructions.reduce((sum,c)=>sum+(c.quantityUnit==='unidad'?Math.max(1,Math.round(num(c.area)||1)):1),0)}
+@@ -2613,6 +2618,7 @@
+   return normalizeCase(c)
+ }
+ function caseCoreIdentity(c){return L26IntegrityCore.caseIdentityKey({general:{tramite:c?.general?.tramite||'',folio:c?.general?.folio||'',finca:c?.general?.finca||'',plano:c?.general?.plano||'',right:c?.general?.right||c?.report?.rectification?.propertyRight||''}})}
++function importMergeKey(c){const folio=L26IntegrityCore.importFolioKey(c);return folio?`F:${folio}`:caseCoreIdentity(c)}
+ async function importExcelFile(file){
+   const ext=file.name.toLowerCase().split('.').pop();
+   if(!['xlsx','csv'].includes(ext))throw new Error('Formato no permitido. Use XLSX o CSV.');
+@@ -2629,10 +2635,10 @@
+   if(!rawRecords.length)throw new Error('El archivo no contiene filas de expedientes reconocibles.');
+   const uniqueRecords=L26ExcelImportCore.dedupeImportedRecords(rawRecords),duplicates=rawRecords.length-uniqueRecords.length;
+   const records=(await idbAll(STORE_CASES)).map(normalizeCase),byKey=new Map();
+-  for(const c of records){const key=caseCoreIdentity(c);if(key&&!byKey.has(key))byKey.set(key,c)}
++  for(const c of records){const key=importMergeKey(c);if(key&&!byKey.has(key))byKey.set(key,c)}
+   let created=0,updated=0,skipped=0;
+   for(const record of uniqueRecords){
+-    const incoming=coreImportRecordToCase(record,file.name),key=caseCoreIdentity(incoming);
++    const incoming=coreImportRecordToCase(record,file.name),key=importMergeKey(incoming);
+     if(!key){skipped++;continue}
+     const found=byKey.get(key);
+     if(found){
+@@ -2816,8 +2822,10 @@
+   const missing=rectificationValidation();if(missing.length){toast(`Complete antes de preparar el PDF: ${missing.join(', ')}.`);return}const w=window.open('','_blank','noopener,noreferrer');if(!w){toast('El navegador bloqueó la ventana del PDF editable.');return}w.document.open();w.document.write(rectificationPreviewHtml(state.current,true));w.document.close();w.focus();toast('PDF editable abierto: complete solo los espacios en blanco y use “Imprimir / guardar PDF”.')
+ }
+ function bytesToDataUrl(bytes,mime){return `data:${mime||'application/octet-stream'};base64,${bytesToBase64(bytes)}`}
++function mergeImportedRecordPreservingExisting(existing,incoming){const base=normalizeCase(existing),extra=normalizeCase(incoming),merged=fillEmptyDeep(structuredClone(base),extra);merged.id=base.id;merged.general=fillEmptyDeep(base.general,extra.general);merged.visit=fillEmptyDeep(base.visit,extra.visit);merged.location=fillEmptyDeep(base.location,extra.location);merged.terrain=fillEmptyDeep(base.terrain,extra.terrain);merged.road=fillEmptyDeep(base.road,extra.road);merged.report=fillEmptyDeep(base.report,extra.report);merged.constructions=mergeById(base.constructions,extra.constructions);merged.photos=mergeById(base.photos,extra.photos);merged.rights=[...new Set([...(base.rights||[]),...(extra.rights||[])])];if(!merged.sourceLink)merged.sourceLink=extra.sourceLink;merged.updatedAt=new Date().toISOString();return normalizeCase(merged)}
+ async function findExistingCaseForImport(incoming,knownCases=null){
+   const normalized=normalizeCase(incoming),cases=knownCases||(await idbAll(STORE_CASES)).map(normalizeCase);
++  const byFolio=L26IntegrityCore.findImportMatchByFolio(cases,normalized);if(byFolio)return byFolio;
+   const byId=cases.find(c=>c.id===normalized.id);if(byId&&L26IntegrityCore.recordsMayMerge(byId,normalized))return byId;
+   const identity=caseCoreIdentity(normalized);if(identity){const same=cases.find(c=>caseCoreIdentity(c)===identity&&L26IntegrityCore.recordsMayMerge(c,normalized));if(same)return same}
+   return null;
+@@ -2825,7 +2833,8 @@
+ async function saveImportedCaseWithoutDuplicates(raw,knownCases=null){
+   let incoming=normalizeCase(raw);const cases=knownCases||(await idbAll(STORE_CASES)).map(normalizeCase),existing=await findExistingCaseForImport(incoming,cases);
+   if(!existing&&cases.some(c=>c.id===incoming.id))incoming.id=uid();
+-  const record=existing?mergeCaseRecords(existing,incoming):incoming;
++  const sameFolio=Boolean(existing&&L26IntegrityCore.importFolioKey(existing)&&L26IntegrityCore.importFolioKey(existing)===L26IntegrityCore.importFolioKey(incoming));
++  const record=existing?(sameFolio?mergeImportedRecordPreservingExisting(existing,incoming):mergeCaseRecords(existing,incoming)):incoming;
+   record.version=APP_VERSION;record.updatedAt=new Date().toISOString();record.syncMeta={...(record.syncMeta||{}),status:'pending',lastError:'',nextRetryAt:''};
+   await idbPut(STORE_CASES,record);
+   return{record:normalizeCase(record),updated:!!existing};
+@@ -2834,7 +2843,7 @@
+   const records=collectImportCaseRecords(data);
+   if(!records.length)throw new Error('El JSON no contiene expedientes reconocibles. Se aceptan respaldos actuales y estructuras de versiones anteriores.');
+   const known=(await idbAll(STORE_CASES)).map(normalizeCase);let created=0,updated=0,last=null;const idMap=new Map();
+-  for(const raw of records){if(!raw||typeof raw!=='object')continue;const sourceId=String(raw.id||raw.caseId||'').trim(),result=await saveImportedCaseWithoutDuplicates(raw,known);last=result.record;if(sourceId)idMap.set(sourceId,result.record.id);if(result.updated)updated++;else{created++;known.push(result.record)}}
++  for(const raw of records){if(!raw||typeof raw!=='object')continue;const sourceId=String(raw.id||raw.caseId||'').trim(),result=await saveImportedCaseWithoutDuplicates(raw,known);last=result.record;if(sourceId)idMap.set(sourceId,result.record.id);const knownIndex=known.findIndex(c=>c.id===result.record.id);if(knownIndex>=0)known[knownIndex]=result.record;else known.push(result.record);if(result.updated)updated++;else created++}
+   if(!created&&!updated)throw new Error('El JSON no contiene expedientes válidos.');
+   await renderCaseList();showView('database');toast(`JSON recuperado: ${created} nuevo(s), ${updated} actualizado(s), sin eliminar expedientes existentes.`);return{created,updated,last,idMap,records};
+ }
+@@ -2925,8 +2934,8 @@
+   const manifest=decode('manifest.json');if(manifest?.schema!=='FiscalizacionBIManagementExport')throw new Error('El paquete no corresponde a un respaldo completo de Gestión.');
+   const incomingCases=decode('expedientes.json');if(!Array.isArray(incomingCases))throw new Error('expedientes.json no contiene una lista válida.');
+   if(!confirm(`Se cargarán ${incomingCases.length} expediente(s). Los existentes se combinarán sin borrar datos no vacíos. ¿Continuar?`))throw new Error('Importación cancelada por el usuario.');
+-  const attachments=files['adjuntos.json']?decode('adjuntos.json'):{photos:[],documents:[],signatures:[]},existingAll=(await idbAll(STORE_CASES)).map(normalizeCase),byId=new Map(existingAll.map(c=>[c.id,c])),byKey=new Map();for(const c of existingAll){const identity=caseCoreIdentity(c);if(identity&&!byKey.has(identity))byKey.set(identity,c)}const idMap=new Map();let created=0,merged=0,photos=0,documents=0;
+-  for(const raw of incomingCases){let incoming=normalizeCase(raw);const sourceId=String(raw?.id||incoming.id||''),key=caseCoreIdentity(incoming),idCandidate=byId.get(incoming.id),existing=(idCandidate&&L26IntegrityCore.recordsMayMerge(idCandidate,incoming)?idCandidate:null)||(key?byKey.get(key):null);if(!existing&&byId.has(incoming.id))incoming.id=uid();const record=existing?mergeCaseRecords(existing,incoming):incoming;record.version=APP_VERSION;record.updatedAt=new Date().toISOString();record.syncMeta={...(record.syncMeta||{}),status:'pending',lastError:'',nextRetryAt:''};await idbPut(STORE_CASES,record);if(sourceId)idMap.set(sourceId,record.id);if(existing)merged++;else created++;byId.set(record.id,record);const recordKey=caseCoreIdentity(record);if(recordKey)byKey.set(recordKey,record)}
++  const attachments=files['adjuntos.json']?decode('adjuntos.json'):{photos:[],documents:[],signatures:[]},existingAll=(await idbAll(STORE_CASES)).map(normalizeCase),byId=new Map(existingAll.map(c=>[c.id,c])),byKey=new Map();for(const c of existingAll){const identity=importMergeKey(c);if(identity&&!byKey.has(identity))byKey.set(identity,c)}const idMap=new Map();let created=0,merged=0,photos=0,documents=0;
++  for(const raw of incomingCases){let incoming=normalizeCase(raw);const sourceId=String(raw?.id||incoming.id||''),key=importMergeKey(incoming),idCandidate=byId.get(incoming.id),folioExisting=L26IntegrityCore.findImportMatchByFolio([...byId.values()],incoming),existing=folioExisting||(idCandidate&&L26IntegrityCore.recordsMayMerge(idCandidate,incoming)?idCandidate:null)||(key?byKey.get(key):null);if(!existing&&byId.has(incoming.id))incoming.id=uid();const sameFolio=Boolean(existing&&L26IntegrityCore.importFolioKey(existing)&&L26IntegrityCore.importFolioKey(existing)===L26IntegrityCore.importFolioKey(incoming)),record=existing?(sameFolio?mergeImportedRecordPreservingExisting(existing,incoming):mergeCaseRecords(existing,incoming)):incoming;record.version=APP_VERSION;record.updatedAt=new Date().toISOString();record.syncMeta={...(record.syncMeta||{}),status:'pending',lastError:'',nextRetryAt:''};await idbPut(STORE_CASES,record);if(sourceId)idMap.set(sourceId,record.id);if(existing)merged++;else created++;byId.set(record.id,record);const recordKey=importMergeKey(record);if(recordKey)byKey.set(recordKey,record)}
+   for(const meta of attachments.photos||[]){const copy={...meta},path=copy.file,target=idMap.get(copy.caseId)||copy.caseId;delete copy.file;delete copy.mime;copy.caseId=target;if(path&&files[path]){copy.blob=new Blob([files[path]],{type:meta.mime||'image/jpeg'});delete copy.blobData;await idbPut(STORE_PHOTOS,copy);photos++}}
+   for(const meta of attachments.documents||[]){const copy={...meta},path=copy.file,target=idMap.get(copy.caseId)||copy.caseId;delete copy.file;delete copy.mime;copy.caseId=target;if(path&&files[path]){copy.blob=new Blob([files[path]],{type:meta.mime||'application/pdf'});delete copy.blobData;await idbPut(STORE_DOCUMENTS,copy);documents++}}
+   for(const sig of attachments.signatures||[]){const target=idMap.get(sig.caseId)||sig.caseId;if(!sig.file||!files[sig.file])continue;const record=await idbGet(STORE_CASES,target);if(!record)continue;record.report={...(record.report||{}),signature:bytesToDataUrl(files[sig.file],sig.mime||'image/png')};record.updatedAt=new Date().toISOString();await idbPut(STORE_CASES,record)}
+@@ -3034,7 +3043,7 @@
+ }
+ function caseRowStateClass(c){const stage=workflowStageKey(c),alarm=caseNeedsAgeAlarm(c)?' case-row-overdue':'';return `case-row-stage-${stage}${alarm}`}
+ function bindCaseRowActions(row,c){row.querySelector('[data-open]')?.addEventListener('click',()=>loadCase(c.id));row.querySelector('[data-delete]')?.addEventListener('click',()=>deleteCase(c.id));const actions=row.querySelector('.case-actions');if(!actions)return;if(c.sourceLink){const open=document.createElement('button');open.type='button';open.className='btn small pdf-link';open.textContent='🔗 Abrir';open.title='Abrir enlace del expediente';open.onclick=()=>openCaseSource(c);actions.appendChild(open);}const attach=document.createElement('button');attach.type='button';attach.className='btn small secondary';attach.textContent='📎 Adjuntar';attach.title='Adjuntar imagen o PDF';attach.onclick=()=>chooseCaseAttachment(c);actions.appendChild(attach)}
+-function caseFolioOrFinca(c){return String(c?.general?.finca||c?.general?.folio||'').trim()}
++function caseFolioOrFinca(c){const value=String(c?.general?.finca||c?.general?.folio||'').trim();return value||'Información posesoria'}
+ function downloadPlaceNotes(placeName,cases){const rows=[['Número de trámite','Folio o finca'],...cases.map(c=>[c.general?.tramite||'',caseFolioOrFinca(c)])],csv=rows.map(row=>row.map(value=>`"${String(value??'').replace(/"/g,'""')}"`).join(',')).join('\r\n'),name=`Notas_${fileNamePart(placeName,'Poblado')}_${new Date().toISOString().slice(0,10)}.csv`;downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),name)}
+ function appendPlaceNotes(placeSection,placeName,cases){const records=cases.map(c=>({tramite:c.general?.tramite||'',folio:caseFolioOrFinca(c)||''}));placeSection.insertAdjacentHTML('beforeend',ImportRules.placeNotesMarkup(placeName,records));const notes=placeSection.lastElementChild;notes?.querySelector('[data-download-place-notes]')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();downloadPlaceNotes(placeName,cases)})}
+ 
+@@ -3048,12 +3057,12 @@
+   for(const group of districts.values()){
+     districtIndex++;group.name=L26TerritoryCore.formatDistrict(preferredProcessGeoName(group.labels,group.name));
+     const section=document.createElement('details'),headingId=`${prefix}-district-${districtIndex}`,districtOpenKey=hierarchyDistrictOpenKey(prefix,group.name);section.className='district-group';section.dataset.hierarchyOpenKey=districtOpenKey;section.open=Boolean(hierarchyOpenState[districtOpenKey]);
+-    section.innerHTML=`<summary class="district-accordion-summary"><span><b id="${headingId}">${esc(group.name)}</b></span><span class="district-count compact-count" aria-label="${group.cases.length} ${group.cases.length===1?'trámite':'trámites'}" title="${group.cases.length} ${group.cases.length===1?'trámite':'trámites'}">${group.cases.length}</span></summary><div class="district-accordion-body district-place-list"></div>`;
++    section.innerHTML=`<summary class="district-accordion-summary"><span><b id="${headingId}">${esc(group.name)}</b></span><span class="district-count compact-count" aria-label="${L26IntegrityCore.uniqueFolioCount(group.cases)} ${L26IntegrityCore.uniqueFolioCount(group.cases)===1?'trámite':'trámites'}" title="${L26IntegrityCore.uniqueFolioCount(group.cases)} ${L26IntegrityCore.uniqueFolioCount(group.cases)===1?'trámite':'trámites'}">${L26IntegrityCore.uniqueFolioCount(group.cases)}</span></summary><div class="district-accordion-body district-place-list"></div>`;
+     const districtPlaceList=section.querySelector('.district-place-list'),orderedPlaces=[...group.places.values()].map(pg=>{pg.name=L26TerritoryCore.formatPlace(preferredProcessGeoName(pg.labels,pg.name));pg.cases.sort(compareCaseDatesOldestFirst);return pg}).sort((a,b)=>caseNaturalCollator.compare(caseSortText(a.name),caseSortText(b.name)));
+     let placeIndex=0;
+     for(const pg of orderedPlaces){
+       placeIndex++;const place=document.createElement('details'),placeHeadingId=`${prefix}-place-${districtIndex}-${placeIndex}`,key=hierarchyPageKey(prefix,group.name,pg.name),placeOpenKey=hierarchyPlaceOpenKey(prefix,group.name,pg.name),total=Math.max(1,Math.ceil(pg.cases.length/HIERARCHY_PAGE_SIZE)),page=Math.min(hierarchyPageState[key]||1,total);hierarchyPageState[key]=page;
+-      place.className='place-group';place.dataset.hierarchyOpenKey=placeOpenKey;place.open=Boolean(hierarchyOpenState[placeOpenKey]);place.innerHTML=`<summary class="place-accordion-summary"><span><b id="${placeHeadingId}">${esc(pg.name)}</b></span><span>${pg.cases.length} ${pg.cases.length===1?'expediente':'expedientes'}</span></summary><div class="place-accordion-body"><div class="place-case-list"></div></div>`;
++      place.className='place-group';place.dataset.hierarchyOpenKey=placeOpenKey;place.open=Boolean(hierarchyOpenState[placeOpenKey]);place.innerHTML=`<summary class="place-accordion-summary"><span><b id="${placeHeadingId}">${esc(pg.name)}</b></span><span>${L26IntegrityCore.uniqueFolioCount(pg.cases)} ${L26IntegrityCore.uniqueFolioCount(pg.cases)===1?'expediente':'expedientes'}</span></summary><div class="place-accordion-body"><div class="place-case-list"></div></div>`;
+       const body=place.querySelector('.place-accordion-body'),list=place.querySelector('.place-case-list'),pageCases=pg.cases.slice((page-1)*HIERARCHY_PAGE_SIZE,page*HIERARCHY_PAGE_SIZE);
+       for(let index=0;index<pageCases.length;index++){
+         const c=pageCases[index],absoluteIndex=(page-1)*HIERARCHY_PAGE_SIZE+index,status=workflowStageLabel(c),inspectionDate=caseChronologyDate(c)||'Sin fecha',ageAlarm=caseNeedsAgeAlarm(c),sent=Boolean(c.emailSentAt||c.status==='Enviado'),docs=(documentsByCase.get(c.id)||[]).sort((a,b)=>String(b.uploadedAt||'').localeCompare(String(a.uploadedAt||''))),row=document.createElement('article');
+@@ -3119,7 +3128,7 @@
+   const seen=new Set();
+   return (await loadCasesWithTerritoryInference()).filter(c=>{
+     if(!managementInspectionCompleted(c))return false;
+-    const key=canonicalCaseKey(c.general?.tramite)||c.id;
++    const key=L26IntegrityCore.importFolioKey(c)||canonicalCaseKey(c.general?.tramite)||c.id;
+     if(seen.has(key))return false;
+     seen.add(key);return true;
+   }).sort(compareCasesByDistrictPlaceDate);
+@@ -3140,7 +3149,7 @@
+ function setManagementSelectOptions(select,entries,allLabel,selected){if(!select)return'';select.innerHTML=`<option value="">${esc(allLabel)}</option>${entries.map(x=>`<option value="${esc(x.key)}">${esc(x.label)}</option>`).join('')}`;select.value=entries.some(x=>x.key===selected)?selected:'';refreshSelectionControls(select);return select.value}
+ function refreshManagementFilterControls(cases){const q=$('#managementSearch'),y=$('#managementYearFilter'),d=$('#managementDistrictFilter'),p=$('#managementPlaceFilter'),n=$('#managementNotifiedFilter'),r=$('#managementRegisteredFilter'),agroBtn=$('#managementAgroFilter'),agroCount=$('#managementAgroCount');if(q&&q.value!==managementFilterState.query)q.value=managementFilterState.query;managementFilterState.year=setManagementSelectOptions(y,L26FilterCore.yearEntries(cases),'Todos los años',managementFilterState.year);const yearCases=L26FilterCore.filterByYear(cases,managementFilterState.year);managementFilterState.district=setManagementSelectOptions(d,managementDistrictEntries(yearCases),'Todos los distritos',managementFilterState.district);managementFilterState.place=setManagementSelectOptions(p,managementPlaceEntries(yearCases,managementFilterState.district),'Todos los lugares',managementFilterState.place);if(n)n.value=managementFilterState.notified;if(r)r.value=managementFilterState.registered;const agroTotal=cases.filter(c=>isAgroObservationCase(c)||c.terrain?.agroDeclared==='Sí').length;if(agroCount)agroCount.textContent=String(agroTotal);if(agroBtn){agroBtn.setAttribute('aria-pressed',managementFilterState.agroOnly?'true':'false');agroBtn.title=agroTotal?`Mostrar solo ${agroTotal} expediente(s) con uso agro`:'No hay expedientes agro indicados todavía.'}}
+ function filterManagementCases(cases){const q=normalizeBaseLocalFilterText(managementFilterState.query),yearCases=L26FilterCore.filterByYear(cases,managementFilterState.year),actionCases=L26ManagementCore.filterByActions(yearCases,managementFilterState);return actionCases.filter(c=>{if(q&&!managementSearchText(c).includes(q))return false;if(managementFilterState.district&&!processGeoNamesMatch(canonicalProcessGeoName(c.visit?.district||'Sin distrito'),managementFilterState.district))return false;if(managementFilterState.place&&!processGeoNamesMatch(canonicalProcessGeoName(casePlace(c)||'Sin poblado o lugar',{place:true}),managementFilterState.place))return false;if(managementFilterState.agroOnly&&!(isAgroObservationCase(c)||c.terrain?.agroDeclared==='Sí'))return false;return true})}
+-async function renderManagementList(){const host=$('#managementList'),summary=$('#managementSummary'),count=$('#managementCaseCount'),status=$('#managementFilterStatus');if(!host||(!db&&storageMode!=='memory'))return;const all=await managementCases();refreshManagementFilterControls(all);const visible=filterManagementCases(all);if(count)count.textContent=visible.length;const districts=buildCaseHierarchy(visible),places=[...districts.values()].reduce((sum,d)=>sum+d.places.size,0);if(summary)summary.innerHTML=`<div><b>${visible.length}</b><span>Trámites</span></div><div><b>${districts.size}</b><span>Distritos</span></div><div><b>${places}</b><span>Grupos de población</span></div>`;if(status){const active=Boolean(normalizeBaseLocalFilterText(managementFilterState.query)||managementFilterState.year||managementFilterState.district||managementFilterState.place||managementFilterState.notified||managementFilterState.registered||managementFilterState.agroOnly),agroText=managementFilterState.agroOnly?' Filtro de uso agro activo.':'';status.textContent=active?`Mostrando ${visible.length} de ${all.length} expediente(s) según la búsqueda y los filtros seleccionados.${agroText}`:`Mostrando los ${all.length} trámite(s) disponibles en Gestión.`;}host.innerHTML='';if(!visible.length){host.innerHTML='<div class="notice">No hay trámites que coincidan con los filtros de Gestión.</div>';return}let di=0;for(const district of districts.values()){di++;district.name=L26TerritoryCore.formatDistrict(preferredProcessGeoName(district.labels,district.name));const d=document.createElement('details'),districtOpenKey=hierarchyDistrictOpenKey('managementList',district.name);d.className='district-group';d.dataset.hierarchyOpenKey=districtOpenKey;d.open=Boolean(hierarchyOpenState[districtOpenKey]);d.innerHTML=`<summary class="district-accordion-summary"><span><b>${esc(district.name)}</b></span><span class="district-count compact-count" aria-label="${district.cases.length} ${district.cases.length===1?'trámite':'trámites'}" title="${district.cases.length} ${district.cases.length===1?'trámite':'trámites'}">${district.cases.length}</span></summary><div class="district-accordion-body"></div>`;const dh=d.querySelector('.district-accordion-body'),ordered=[...district.places.values()].map(g=>{g.name=preferredPlaceName(g.labels);g.cases.sort(compareCaseDatesOldestFirst);return g}).sort((a,b)=>caseNaturalCollator.compare(caseSortText(a.name),caseSortText(b.name)));for(const place of ordered){const p=document.createElement('details'),key=hierarchyPageKey('managementList',district.name,place.name),placeOpenKey=hierarchyPlaceOpenKey('managementList',district.name,place.name),total=Math.max(1,Math.ceil(place.cases.length/HIERARCHY_PAGE_SIZE)),page=Math.min(hierarchyPageState[key]||1,total);hierarchyPageState[key]=page;p.className='place-group';p.dataset.hierarchyOpenKey=placeOpenKey;p.open=Boolean(hierarchyOpenState[placeOpenKey]);p.innerHTML=`<summary class="place-accordion-summary"><b>${esc(place.name)}</b><span>${place.cases.length} fiscalizado(s)</span></summary><div class="place-accordion-body"><div class="place-case-list"></div></div>`;const body=p.querySelector('.place-accordion-body'),rows=p.querySelector('.place-case-list');for(const c of place.cases.slice((page-1)*HIERARCHY_PAGE_SIZE,page*HIERARCHY_PAGE_SIZE)){const row=document.createElement('article'),mStatus=managementStatus(c),notification=managementNotificationState(c),outcome=effectiveFiscalOutcome(c),hasSource=Boolean(c.sourceLink||c.general?.sourceLink),ageAlarm=L26ManagementCore.isOlderThanYear(caseChronologyDate(c)),observation=String(c.general?.managementObservation||'').trim(),actionColor=L26ManagementCore.colorClass(c,ageAlarm);row.className=`case-row management-case-v22 ${caseRowStateClass(c)} ${mStatus.className} ${actionColor}${observation?' has-management-observation':''}`;row.innerHTML=`${observation?`<div class="management-observation-badge"><b>Observación</b>${esc(observation)}</div>`:''}<div class="management-fields-v22"><span><b>Expediente</b><strong>${esc(c.general?.tramite||'—')}</strong></span><span><b>Folio / finca</b><strong>${esc(caseFolioOrFinca(c)||'—')}</strong></span><span><b>Fecha de toma de datos</b><strong>${esc(managementInspectionDate(c))}</strong></span><span><b>Estado</b><strong class="management-status-badge ${mStatus.className}">${esc(mStatus.label)}</strong>${ageAlarm&&!notification.notified&&!notification.registered?'<em class="management-age-alarm">Alarma: más de un año</em>':''}</span></div><div class="management-actions-v22"><button class="btn primary small" data-management-open>Abrir expediente</button><button class="btn pdf small" data-management-report-pdf>PDF informe</button>${outcome==='OBJETAR'?'<button class="btn pdf small" data-management-rectification-pdf>Solicitud de rectificar</button>':''}${hasSource?'<button class="btn small" data-management-source-link>Abrir link</button>':''}<button class="btn small ${(notification.notified||notification.registered)?'primary':''}" data-management-notification>Notificado / Registrado</button></div>`;row.querySelector('[data-management-open]').addEventListener('click',()=>loadCase(c.id));row.querySelector('[data-management-report-pdf]').addEventListener('click',async()=>{const selected=await idbGet(STORE_CASES,c.id);if(!selected)return;state.current=normalizeCase(selected);state.audit=Array.isArray(state.current.repositoryAudit?.items)?state.current.repositoryAudit.items:[];renderAll();await openEditableReport(true,'all')});row.querySelector('[data-management-rectification-pdf]')?.addEventListener('click',async()=>{const selected=await idbGet(STORE_CASES,c.id);if(!selected)return;state.current=normalizeCase(selected);state.audit=Array.isArray(state.current.repositoryAudit?.items)?state.current.repositoryAudit.items:[];renderAll();printRectification()});row.querySelector('[data-management-source-link]')?.addEventListener('click',()=>openCaseSource(c));row.querySelector('[data-management-notification]')?.addEventListener('click',()=>openManagementActionModal(c));rows.appendChild(row)}renderPlacePagination(body,key,total,page,()=>renderManagementList());dh.appendChild(p)}host.appendChild(d)}}
++async function renderManagementList(){const host=$('#managementList'),summary=$('#managementSummary'),count=$('#managementCaseCount'),status=$('#managementFilterStatus');if(!host||(!db&&storageMode!=='memory'))return;const all=await managementCases();refreshManagementFilterControls(all);const visible=filterManagementCases(all);if(count)count.textContent=L26IntegrityCore.uniqueFolioCount(visible);const districts=buildCaseHierarchy(visible),places=[...districts.values()].reduce((sum,d)=>sum+d.places.size,0);if(summary)summary.innerHTML=`<div><b>${L26IntegrityCore.uniqueFolioCount(visible)}</b><span>Trámites</span></div><div><b>${districts.size}</b><span>Distritos</span></div><div><b>${places}</b><span>Grupos de población</span></div>`;if(status){const active=Boolean(normalizeBaseLocalFilterText(managementFilterState.query)||managementFilterState.year||managementFilterState.district||managementFilterState.place||managementFilterState.notified||managementFilterState.registered||managementFilterState.agroOnly),agroText=managementFilterState.agroOnly?' Filtro de uso agro activo.':'';status.textContent=active?`Mostrando ${L26IntegrityCore.uniqueFolioCount(visible)} de ${L26IntegrityCore.uniqueFolioCount(all)} expediente(s) según la búsqueda y los filtros seleccionados.${agroText}`:`Mostrando los ${L26IntegrityCore.uniqueFolioCount(all)} trámite(s) disponibles en Gestión.`;}host.innerHTML='';if(!visible.length){host.innerHTML='<div class="notice">No hay trámites que coincidan con los filtros de Gestión.</div>';return}let di=0;for(const district of districts.values()){di++;district.name=L26TerritoryCore.formatDistrict(preferredProcessGeoName(district.labels,district.name));const d=document.createElement('details'),districtOpenKey=hierarchyDistrictOpenKey('managementList',district.name);d.className='district-group';d.dataset.hierarchyOpenKey=districtOpenKey;d.open=Boolean(hierarchyOpenState[districtOpenKey]);d.innerHTML=`<summary class="district-accordion-summary"><span><b>${esc(district.name)}</b></span><span class="district-count compact-count" aria-label="${L26IntegrityCore.uniqueFolioCount(district.cases)} ${L26IntegrityCore.uniqueFolioCount(district.cases)===1?'trámite':'trámites'}" title="${L26IntegrityCore.uniqueFolioCount(district.cases)} ${L26IntegrityCore.uniqueFolioCount(district.cases)===1?'trámite':'trámites'}">${L26IntegrityCore.uniqueFolioCount(district.cases)}</span></summary><div class="district-accordion-body"></div>`;const dh=d.querySelector('.district-accordion-body'),ordered=[...district.places.values()].map(g=>{g.name=preferredPlaceName(g.labels);g.cases.sort(compareCaseDatesOldestFirst);return g}).sort((a,b)=>caseNaturalCollator.compare(caseSortText(a.name),caseSortText(b.name)));for(const place of ordered){const p=document.createElement('details'),key=hierarchyPageKey('managementList',district.name,place.name),placeOpenKey=hierarchyPlaceOpenKey('managementList',district.name,place.name),total=Math.max(1,Math.ceil(place.cases.length/HIERARCHY_PAGE_SIZE)),page=Math.min(hierarchyPageState[key]||1,total);hierarchyPageState[key]=page;p.className='place-group';p.dataset.hierarchyOpenKey=placeOpenKey;p.open=Boolean(hierarchyOpenState[placeOpenKey]);p.innerHTML=`<summary class="place-accordion-summary"><b>${esc(place.name)}</b><span>${L26IntegrityCore.uniqueFolioCount(place.cases)} fiscalizado(s)</span></summary><div class="place-accordion-body"><div class="place-case-list"></div></div>`;const body=p.querySelector('.place-accordion-body'),rows=p.querySelector('.place-case-list');for(const c of place.cases.slice((page-1)*HIERARCHY_PAGE_SIZE,page*HIERARCHY_PAGE_SIZE)){const row=document.createElement('article'),mStatus=managementStatus(c),notification=managementNotificationState(c),outcome=effectiveFiscalOutcome(c),hasSource=Boolean(c.sourceLink||c.general?.sourceLink),ageAlarm=L26ManagementCore.isOlderThanYear(caseChronologyDate(c)),observation=String(c.general?.managementObservation||'').trim(),actionColor=L26ManagementCore.colorClass(c,ageAlarm);row.className=`case-row management-case-v22 ${caseRowStateClass(c)} ${mStatus.className} ${actionColor}${observation?' has-management-observation':''}`;row.innerHTML=`${observation?`<div class="management-observation-badge"><b>Observación</b>${esc(observation)}</div>`:''}<div class="management-fields-v22"><span><b>Expediente</b><strong>${esc(c.general?.tramite||'—')}</strong></span><span><b>Folio / finca</b><strong>${esc(caseFolioOrFinca(c)||'—')}</strong></span><span><b>Fecha de toma de datos</b><strong>${esc(managementInspectionDate(c))}</strong></span><span><b>Estado</b><strong class="management-status-badge ${mStatus.className}">${esc(mStatus.label)}</strong>${ageAlarm&&!notification.notified&&!notification.registered?'<em class="management-age-alarm">Alarma: más de un año</em>':''}</span></div><div class="management-actions-v22"><button class="btn primary small" data-management-open>Abrir expediente</button><button class="btn pdf small" data-management-report-pdf>PDF informe</button>${outcome==='OBJETAR'?'<button class="btn pdf small" data-management-rectification-pdf>Solicitud de rectificar</button>':''}${hasSource?'<button class="btn small" data-management-source-link>Abrir link</button>':''}<button class="btn small ${(notification.notified||notification.registered)?'primary':''}" data-management-notification>Notificado / Registrado</button></div>`;row.querySelector('[data-management-open]').addEventListener('click',()=>loadCase(c.id));row.querySelector('[data-management-report-pdf]').addEventListener('click',async()=>{const selected=await idbGet(STORE_CASES,c.id);if(!selected)return;state.current=normalizeCase(selected);state.audit=Array.isArray(state.current.repositoryAudit?.items)?state.current.repositoryAudit.items:[];renderAll();await openEditableReport(true,'all')});row.querySelector('[data-management-rectification-pdf]')?.addEventListener('click',async()=>{const selected=await idbGet(STORE_CASES,c.id);if(!selected)return;state.current=normalizeCase(selected);state.audit=Array.isArray(state.current.repositoryAudit?.items)?state.current.repositoryAudit.items:[];renderAll();printRectification()});row.querySelector('[data-management-source-link]')?.addEventListener('click',()=>openCaseSource(c));row.querySelector('[data-management-notification]')?.addEventListener('click',()=>openManagementActionModal(c));rows.appendChild(row)}renderPlacePagination(body,key,total,page,()=>renderManagementList());dh.appendChild(p)}host.appendChild(d)}}
+ 
+ function normalizeBaseLocalFilterText(value){return String(value||'').trim().replace(/\s+/g,' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-CR')}
+ function baseLocalCaseSearchText(c){return normalizeBaseLocalFilterText([c?.general?.folio,c?.general?.tramite,c?.general?.finca,casePlace(c)].filter(Boolean).join(' '))}
+@@ -3153,7 +3162,7 @@
+ function filterBaseLocalCases(cases){const query=normalizeBaseLocalFilterText(baseLocalFilterState.query),district=baseLocalFilterState.district,place=baseLocalFilterState.place,yearCases=L26FilterCore.filterByYear(cases,baseLocalFilterState.year);return yearCases.filter(c=>{if(query&&!baseLocalCaseSearchText(c).includes(query))return false;if(district&&!processGeoNamesMatch(canonicalProcessGeoName(c?.visit?.district||'Sin distrito'),district))return false;if(place&&!processGeoNamesMatch(canonicalProcessGeoName(casePlace(c)||'Sin poblado o lugar',{place:true}),place))return false;if(baseLocalFilterState.agroOnly&&!(isAgroObservationCase(c)||c.terrain?.agroDeclared==='Sí'))return false;return true})}
+ function updateBaseLocalFilterStatus(visible,total){const status=$('#baseLocalFilterStatus');if(!status)return;const active=Boolean(normalizeBaseLocalFilterText(baseLocalFilterState.query)||baseLocalFilterState.year||baseLocalFilterState.district||baseLocalFilterState.place||baseLocalFilterState.agroOnly);const agroText=baseLocalFilterState.agroOnly?' Filtro de uso agro activo.':'';status.textContent=active?`Mostrando ${visible} de ${total} expediente(s) según la búsqueda y los filtros seleccionados.${agroText}`:`Mostrando los ${total} trámite(s) activos de Fiscalización, sin trasladar a Gestión.`}
+ 
+-async function renderCaseList(){if(!db&&storageMode!=='memory')return;const processHost=$('#caseList'),summary=$('#caseHierarchySummary'),all=(await loadCasesWithTerritoryInference()).sort(compareCasesByDistrictPlaceDate),localCases=all.filter(c=>!managementInspectionCompleted(c)),transferredCases=all.filter(c=>managementInspectionCompleted(c)),summaryCounts=L26ManagementCore.summaryCounts(all,managementInspectionCompleted),districts=buildProcessCaseHierarchy(localCases),placeGroupCount=[...districts.values()].reduce((n,d)=>n+d.places.size,0),alarmCount=localCases.filter(c=>caseNeedsAgeAlarm(c)).length;refreshBaseLocalFilterControls(localCases);const visibleCases=filterBaseLocalCases(localCases),emptyMessage=localCases.length?'No hay expedientes que coincidan con la búsqueda o los filtros seleccionados.':'No hay trámites activos de Fiscalización pendientes de traslado a Gestión.';$('#processCaseCount').textContent=visibleCases.length;updateBaseLocalFilterStatus(visibleCases.length,localCases.length);if(summary)summary.innerHTML=`<div><b>${summaryCounts.total}</b><span>Trámites</span></div><div class="summary-process"><b>${summaryCounts.active}</b><span>Activos</span></div><div class="summary-completed"><b>${summaryCounts.management}</b><span>En Gestión</span></div><div><b>${districts.size}</b><span>Distritos</span></div><div><b>${placeGroupCount}</b><span>Grupos de población</span></div><div class="summary-alarm"><b>${alarmCount}</b><span>Alarmas +1 año</span></div>`;await renderCaseHierarchy(processHost,visibleCases,emptyMessage);if(!localCases.length&&summary&&transferredCases.length)summary.insertAdjacentHTML('beforeend',`<p class="transferred-note">${transferredCases.length} expediente(s) permanecen resguardados en Gestión.</p>`);await renderManagementList()}
++async function renderCaseList(){if(!db&&storageMode!=='memory')return;const processHost=$('#caseList'),summary=$('#caseHierarchySummary'),all=(await loadCasesWithTerritoryInference()).sort(compareCasesByDistrictPlaceDate),localCases=all.filter(c=>!managementInspectionCompleted(c)),transferredCases=all.filter(c=>managementInspectionCompleted(c)),summaryCounts=L26ManagementCore.summaryCounts(all,managementInspectionCompleted),districts=buildProcessCaseHierarchy(localCases),placeGroupCount=[...districts.values()].reduce((n,d)=>n+d.places.size,0),alarmCount=localCases.filter(c=>caseNeedsAgeAlarm(c)).length;refreshBaseLocalFilterControls(localCases);const visibleCases=filterBaseLocalCases(localCases),emptyMessage=localCases.length?'No hay expedientes que coincidan con la búsqueda o los filtros seleccionados.':'No hay trámites activos de Fiscalización pendientes de traslado a Gestión.';$('#processCaseCount').textContent=L26IntegrityCore.uniqueFolioCount(visibleCases);updateBaseLocalFilterStatus(L26IntegrityCore.uniqueFolioCount(visibleCases),L26IntegrityCore.uniqueFolioCount(localCases));if(summary)summary.innerHTML=`<div><b>${summaryCounts.total}</b><span>Trámites</span></div><div class="summary-process"><b>${summaryCounts.active}</b><span>Activos</span></div><div class="summary-completed"><b>${summaryCounts.management}</b><span>En Gestión</span></div><div><b>${districts.size}</b><span>Distritos</span></div><div><b>${placeGroupCount}</b><span>Grupos de población</span></div><div class="summary-alarm"><b>${alarmCount}</b><span>Alarmas +1 año</span></div>`;await renderCaseHierarchy(processHost,visibleCases,emptyMessage);if(!localCases.length&&summary&&transferredCases.length)summary.insertAdjacentHTML('beforeend',`<p class="transferred-note">${transferredCases.length} expediente(s) permanecen resguardados en Gestión.</p>`);await renderManagementList()}
+ $('#refreshCasesBtn').addEventListener('click',renderCaseList);
+ $('#baseLocalSearch')?.addEventListener('input',event=>{baseLocalFilterState.query=event.target.value;clearTimeout(baseLocalSearchTimer);baseLocalSearchTimer=setTimeout(renderCaseList,120)});
+ $('#baseLocalYearFilter')?.addEventListener('change',event=>{baseLocalFilterState.year=event.target.value;baseLocalFilterState.district='';baseLocalFilterState.place='';renderCaseList()});
+--- a/Fiscalizacion_BI_V27_FINAL.html
++++ b/Fiscalizacion_BI_V27_FINAL.html
+@@ -631,6 +631,7 @@
+       <div class="grid">
+         <label class="field col-3"><span class="required">Número de expediente / trámite</span><input data-path="general.tramite" id="tramiteLookup" placeholder="Ej. BI-2026-0001"><small class="help">Al salir del campo, busca un expediente existente en Trámites de Fiscalización y completa sus datos.</small></label>
+         <label class="field col-3"><span>Número de finca registral</span><input data-path="general.finca" placeholder="Provincia-finca-derecho"></label>
++        <div class="field col-3" id="posesoriaOption" hidden><span>Información posesoria</span><label class="check"><input type="checkbox" data-path="general.informacionPosesoria"> Sí, corresponde a información posesoria</label></div>
+         <label class="field col-3"><span>Número de plano catastrado</span><input data-path="general.plano" placeholder="Ej. H-1234567-2024"></label>
+         <label class="field col-3"><span>Área según registro (m²)</span><input data-path="general.registryArea" inputmode="decimal" type="number" min="0" step="0.01" placeholder="Dato registral; independiente de construcciones"></label>
+         <label class="field col-4"><span>Propietario registral</span><input data-path="general.owner"></label>
+@@ -1303,7 +1304,7 @@
+   syncMeta:{centralRevision:0,centralUpdatedAt:'',assignedTo:'',leaseUntil:'',status:'pending',lastAttemptAt:'',lastSuccessAt:'',lastError:'',conflicts:[],retryCount:0,nextRetryAt:''},
+   localBase:{visible:true,transferredAt:'',reason:''},
+   management:{notified:false,notifiedAt:'',registered:false,registeredAt:''},
+-  general:{tramite:'',inspectionNumber:'',folio:'',declarationDate:'',finca:'',plano:'',right:'',sourceId:'',idDerecho:'',registryArea:'',owner:'',ownerId:'',processType:'',observations:'',managementObservation:''},
++  general:{tramite:'',inspectionNumber:'',folio:'',declarationDate:'',finca:'',informacionPosesoria:false,plano:'',right:'',sourceId:'',idDerecho:'',registryArea:'',owner:'',ownerId:'',processType:'',observations:'',managementObservation:''},
+   visit:{day:dayName(today()),date:today(),time:timeNow(),province:'Heredia',canton:'Sarapiquí',district:'',locality:'',accessAuthorized:false,photoAuthorized:false,interiorInspected:false,ownerInterview:false,documentsReviewed:false,limitations:''},
+   terrain:{topography:'',slope:'',streetLevel:'',streetLevelDifference:'',agroDeclared:'',agroActivity:'',waterAffected:'',waterType:'',waterRelation:'',waterNotes:'',notes:'',services1Code:'',services2Code:'',additionalServices:[]},
+   road:{ontCode:'',surface:'',accessType:'',notes:''},
+@@ -1416,6 +1417,9 @@
+   c.sourceLink=String(c.sourceLink||c.link||c.url||DEFAULT_CASE_SOURCE_URL).trim()||DEFAULT_CASE_SOURCE_URL;
+   c.general.sourceId=String(c.general.sourceId||c.sourceId||c.idImportado||'').trim();
+   c.general.idDerecho=String(c.general.idDerecho||c.idDerecho||'').trim();
++  const posesoriaRaw=c.general.informacionPosesoria??c.general.posesoria??c.informacionPosesoria??c.posesoria??false;
++  c.general.informacionPosesoria=posesoriaRaw===true||['si','sí','true','1','yes'].includes(String(posesoriaRaw).trim().toLowerCase());
++  if(c.general.folio||c.general.finca)c.general.informacionPosesoria=false;
+   if(c.terrain.waterAffected==='Colinda con'){c.terrain.waterAffected='Afectado';if(!c.terrain.waterRelation)c.terrain.waterRelation='Colinda';}
+   if(c.terrain.waterAffected==='Sí')c.terrain.waterAffected='Afectado';
+   if(c.report.fiscalization?.decision&& !c.report.fiscalization.finalOutcome && ['ACEPTAR','OBJETAR'].includes(c.report.fiscalization.decision))c.report.fiscalization.finalOutcome=c.report.fiscalization.decision;
+@@ -1767,10 +1771,11 @@
+   });
+   $$('[data-array]').forEach(el=>el.checked=(getPath(state.current,el.dataset.array)||[]).includes(el.value));
+ }
++function refreshPosesoriaOption(){const host=$('#posesoriaOption');if(!host||!state.current)return;const hasRegistry=Boolean(String(state.current.general?.folio||'').trim()||String(state.current.general?.finca||'').trim());host.hidden=hasRegistry;if(hasRegistry&&state.current.general?.informacionPosesoria){state.current.general.informacionPosesoria=false;const checkbox=host.querySelector('[data-path="general.informacionPosesoria"]');if(checkbox)checkbox.checked=false}}
+ function captureStartText(c=state.current){const raw=c?.captureStartedAt||c?.createdAt||'';if(!raw)return '';const d=new Date(raw);return Number.isNaN(d.getTime())?String(raw):d.toLocaleString('es-CR')}
+ function updateCaptureStartedDisplay(){const el=$('#captureStartedDisplay');if(el)el.value=captureStartText()}
+ function ensureCaptureStarted(){if(state.current&&!state.current.captureStartedAt)state.current.captureStartedAt=new Date().toISOString();if(state.current&&state.current.status==='Asignado')state.current.status='En proceso';updateCaptureStartedDisplay()}
+-function handleBoundInput(e){const el=e.target;ensureCaptureStarted();if(el.dataset.path){if(el.type==='radio'&&!el.checked)return;let v=el.type==='checkbox'?el.checked:el.value;setPath(state.current,el.dataset.path,v);if(el.dataset.path==='visit.date'){state.current.visit.day=dayName(v);const dayEl=document.querySelector('[data-path="visit.day"]');if(dayEl)dayEl.value=state.current.visit.day}markDirty()}else if(el.dataset.array){let arr=getPath(state.current,el.dataset.array)||[];arr=el.checked?[...new Set([...arr,el.value])]:arr.filter(x=>x!==el.value);setPath(state.current,el.dataset.array,arr);markDirty()}}
++function handleBoundInput(e){const el=e.target;ensureCaptureStarted();if(el.dataset.path){if(el.type==='radio'&&!el.checked)return;let v=el.type==='checkbox'?el.checked:el.value;setPath(state.current,el.dataset.path,v);if(el.dataset.path==='visit.date'){state.current.visit.day=dayName(v);const dayEl=document.querySelector('[data-path="visit.day"]');if(dayEl)dayEl.value=state.current.visit.day}if(el.dataset.path==='general.folio'||el.dataset.path==='general.finca')refreshPosesoriaOption();markDirty()}else if(el.dataset.array){let arr=getPath(state.current,el.dataset.array)||[];arr=el.checked?[...new Set([...arr,el.value])]:arr.filter(x=>x!==el.value);setPath(state.current,el.dataset.array,arr);markDirty()}}
+ 
+ document.addEventListener('input',handleBoundInput);document.addEventListener('change',handleBoundInput);
+ 
+@@ -1863,7 +1868,7 @@
+ const CONSTRUCTION_FISCAL_KEYS=['constructionTypesMatch','constructionAreasMatch','constructionCountMatch','constructionValuesMatch'];
+ function hasRegisteredConstructions(c=state.current){return Boolean(c&&Array.isArray(c.constructions)&&c.constructions.length)}
+ function enforceConstructionFiscalizationApplicability(c=state.current){if(!c?.report?.fiscalization)return false;const applies=hasRegisteredConstructions(c);if(!applies)CONSTRUCTION_FISCAL_KEYS.forEach(k=>c.report.fiscalization[k]='No aplica');return applies}
+-function renderAll(){enforceConstructionFiscalizationApplicability();syncRectificationFromCase(state.current);bindStaticFields();updateCaptureStartedDisplay();updateWaterDetails();autoSelectAgroFromTramite();updateTerrainAgroUI();updateStreetLevelCompact();$('#caseCode').textContent=state.current.general.tramite||`BORRADOR ${state.current.id.slice(0,8).toUpperCase()}`;renderConstructions();refreshAssociationSelectors();renderPhotos();renderPdfDocuments();refreshDerived();updateLocationStatus();renderAudit();renderSignatures();renderValuationAnnex();renderWorkflow();refreshRectificationOutput();refreshSelectionControls();refreshPersistentAccordionSummaries();}
++function renderAll(){enforceConstructionFiscalizationApplicability();syncRectificationFromCase(state.current);bindStaticFields();refreshPosesoriaOption();updateCaptureStartedDisplay();updateWaterDetails();autoSelectAgroFromTramite();updateTerrainAgroUI();updateStreetLevelCompact();$('#caseCode').textContent=state.current.general.tramite||`BORRADOR ${state.current.id.slice(0,8).toUpperCase()}`;renderConstructions();refreshAssociationSelectors();renderPhotos();renderPdfDocuments();refreshDerived();updateLocationStatus();renderAudit();renderSignatures();renderValuationAnnex();renderWorkflow();refreshRectificationOutput();refreshSelectionControls();refreshPersistentAccordionSummaries();}
+ function totalConstructionArea(){return state.current.constructions.filter(c=>c.quantityUnit==='m²').reduce((sum,c)=>sum+num(c.area),0)}
+ function totalConstructionLinear(){return state.current.constructions.reduce((sum,c)=>sum+(c.quantityUnit==='ML'?num(c.area):c.quantityUnit==='km'?num(c.area)*1000:0),0)}
+ function totalConstructionUnits(){return state.current.constructions.reduce((sum,c)=>sum+(c.quantityUnit==='unidad'?Math.max(1,Math.round(num(c.area)||1)):1),0)}
+@@ -2613,6 +2618,7 @@
+   return normalizeCase(c)
+ }
+ function caseCoreIdentity(c){return L26IntegrityCore.caseIdentityKey({general:{tramite:c?.general?.tramite||'',folio:c?.general?.folio||'',finca:c?.general?.finca||'',plano:c?.general?.plano||'',right:c?.general?.right||c?.report?.rectification?.propertyRight||''}})}
++function importMergeKey(c){const folio=L26IntegrityCore.importFolioKey(c);return folio?`F:${folio}`:caseCoreIdentity(c)}
+ async function importExcelFile(file){
+   const ext=file.name.toLowerCase().split('.').pop();
+   if(!['xlsx','csv'].includes(ext))throw new Error('Formato no permitido. Use XLSX o CSV.');
+@@ -2629,10 +2635,10 @@
+   if(!rawRecords.length)throw new Error('El archivo no contiene filas de expedientes reconocibles.');
+   const uniqueRecords=L26ExcelImportCore.dedupeImportedRecords(rawRecords),duplicates=rawRecords.length-uniqueRecords.length;
+   const records=(await idbAll(STORE_CASES)).map(normalizeCase),byKey=new Map();
+-  for(const c of records){const key=caseCoreIdentity(c);if(key&&!byKey.has(key))byKey.set(key,c)}
++  for(const c of records){const key=importMergeKey(c);if(key&&!byKey.has(key))byKey.set(key,c)}
+   let created=0,updated=0,skipped=0;
+   for(const record of uniqueRecords){
+-    const incoming=coreImportRecordToCase(record,file.name),key=caseCoreIdentity(incoming);
++    const incoming=coreImportRecordToCase(record,file.name),key=importMergeKey(incoming);
+     if(!key){skipped++;continue}
+     const found=byKey.get(key);
+     if(found){
+@@ -2816,8 +2822,10 @@
+   const missing=rectificationValidation();if(missing.length){toast(`Complete antes de preparar el PDF: ${missing.join(', ')}.`);return}const w=window.open('','_blank','noopener,noreferrer');if(!w){toast('El navegador bloqueó la ventana del PDF editable.');return}w.document.open();w.document.write(rectificationPreviewHtml(state.current,true));w.document.close();w.focus();toast('PDF editable abierto: complete solo los espacios en blanco y use “Imprimir / guardar PDF”.')
+ }
+ function bytesToDataUrl(bytes,mime){return `data:${mime||'application/octet-stream'};base64,${bytesToBase64(bytes)}`}
++function mergeImportedRecordPreservingExisting(existing,incoming){const base=normalizeCase(existing),extra=normalizeCase(incoming),merged=fillEmptyDeep(structuredClone(base),extra);merged.id=base.id;merged.general=fillEmptyDeep(base.general,extra.general);merged.visit=fillEmptyDeep(base.visit,extra.visit);merged.location=fillEmptyDeep(base.location,extra.location);merged.terrain=fillEmptyDeep(base.terrain,extra.terrain);merged.road=fillEmptyDeep(base.road,extra.road);merged.report=fillEmptyDeep(base.report,extra.report);merged.constructions=mergeById(base.constructions,extra.constructions);merged.photos=mergeById(base.photos,extra.photos);merged.rights=[...new Set([...(base.rights||[]),...(extra.rights||[])])];if(!merged.sourceLink)merged.sourceLink=extra.sourceLink;merged.updatedAt=new Date().toISOString();return normalizeCase(merged)}
+ async function findExistingCaseForImport(incoming,knownCases=null){
+   const normalized=normalizeCase(incoming),cases=knownCases||(await idbAll(STORE_CASES)).map(normalizeCase);
++  const byFolio=L26IntegrityCore.findImportMatchByFolio(cases,normalized);if(byFolio)return byFolio;
+   const byId=cases.find(c=>c.id===normalized.id);if(byId&&L26IntegrityCore.recordsMayMerge(byId,normalized))return byId;
+   const identity=caseCoreIdentity(normalized);if(identity){const same=cases.find(c=>caseCoreIdentity(c)===identity&&L26IntegrityCore.recordsMayMerge(c,normalized));if(same)return same}
+   return null;
+@@ -2825,7 +2833,8 @@
+ async function saveImportedCaseWithoutDuplicates(raw,knownCases=null){
+   let incoming=normalizeCase(raw);const cases=knownCases||(await idbAll(STORE_CASES)).map(normalizeCase),existing=await findExistingCaseForImport(incoming,cases);
+   if(!existing&&cases.some(c=>c.id===incoming.id))incoming.id=uid();
+-  const record=existing?mergeCaseRecords(existing,incoming):incoming;
++  const sameFolio=Boolean(existing&&L26IntegrityCore.importFolioKey(existing)&&L26IntegrityCore.importFolioKey(existing)===L26IntegrityCore.importFolioKey(incoming));
++  const record=existing?(sameFolio?mergeImportedRecordPreservingExisting(existing,incoming):mergeCaseRecords(existing,incoming)):incoming;
+   record.version=APP_VERSION;record.updatedAt=new Date().toISOString();record.syncMeta={...(record.syncMeta||{}),status:'pending',lastError:'',nextRetryAt:''};
+   await idbPut(STORE_CASES,record);
+   return{record:normalizeCase(record),updated:!!existing};
+@@ -2834,7 +2843,7 @@
+   const records=collectImportCaseRecords(data);
+   if(!records.length)throw new Error('El JSON no contiene expedientes reconocibles. Se aceptan respaldos actuales y estructuras de versiones anteriores.');
+   const known=(await idbAll(STORE_CASES)).map(normalizeCase);let created=0,updated=0,last=null;const idMap=new Map();
+-  for(const raw of records){if(!raw||typeof raw!=='object')continue;const sourceId=String(raw.id||raw.caseId||'').trim(),result=await saveImportedCaseWithoutDuplicates(raw,known);last=result.record;if(sourceId)idMap.set(sourceId,result.record.id);if(result.updated)updated++;else{created++;known.push(result.record)}}
++  for(const raw of records){if(!raw||typeof raw!=='object')continue;const sourceId=String(raw.id||raw.caseId||'').trim(),result=await saveImportedCaseWithoutDuplicates(raw,known);last=result.record;if(sourceId)idMap.set(sourceId,result.record.id);const knownIndex=known.findIndex(c=>c.id===result.record.id);if(knownIndex>=0)known[knownIndex]=result.record;else known.push(result.record);if(result.updated)updated++;else created++}
+   if(!created&&!updated)throw new Error('El JSON no contiene expedientes válidos.');
+   await renderCaseList();showView('database');toast(`JSON recuperado: ${created} nuevo(s), ${updated} actualizado(s), sin eliminar expedientes existentes.`);return{created,updated,last,idMap,records};
+ }
+@@ -2925,8 +2934,8 @@
+   const manifest=decode('manifest.json');if(manifest?.schema!=='FiscalizacionBIManagementExport')throw new Error('El paquete no corresponde a un respaldo completo de Gestión.');
+   const incomingCases=decode('expedientes.json');if(!Array.isArray(incomingCases))throw new Error('expedientes.json no contiene una lista válida.');
+   if(!confirm(`Se cargarán ${incomingCases.length} expediente(s). Los existentes se combinarán sin borrar datos no vacíos. ¿Continuar?`))throw new Error('Importación cancelada por el usuario.');
+-  const attachments=files['adjuntos.json']?decode('adjuntos.json'):{photos:[],documents:[],signatures:[]},existingAll=(await idbAll(STORE_CASES)).map(normalizeCase),byId=new Map(existingAll.map(c=>[c.id,c])),byKey=new Map();for(const c of existingAll){const identity=caseCoreIdentity(c);if(identity&&!byKey.has(identity))byKey.set(identity,c)}const idMap=new Map();let created=0,merged=0,photos=0,documents=0;
+-  for(const raw of incomingCases){let incoming=normalizeCase(raw);const sourceId=String(raw?.id||incoming.id||''),key=caseCoreIdentity(incoming),idCandidate=byId.get(incoming.id),existing=(idCandidate&&L26IntegrityCore.recordsMayMerge(idCandidate,incoming)?idCandidate:null)||(key?byKey.get(key):null);if(!existing&&byId.has(incoming.id))incoming.id=uid();const record=existing?mergeCaseRecords(existing,incoming):incoming;record.version=APP_VERSION;record.updatedAt=new Date().toISOString();record.syncMeta={...(record.syncMeta||{}),status:'pending',lastError:'',nextRetryAt:''};await idbPut(STORE_CASES,record);if(sourceId)idMap.set(sourceId,record.id);if(existing)merged++;else created++;byId.set(record.id,record);const recordKey=caseCoreIdentity(record);if(recordKey)byKey.set(recordKey,record)}
++  const attachments=files['adjuntos.json']?decode('adjuntos.json'):{photos:[],documents:[],signatures:[]},existingAll=(await idbAll(STORE_CASES)).map(normalizeCase),byId=new Map(existingAll.map(c=>[c.id,c])),byKey=new Map();for(const c of existingAll){const identity=importMergeKey(c);if(identity&&!byKey.has(identity))byKey.set(identity,c)}const idMap=new Map();let created=0,merged=0,photos=0,documents=0;
++  for(const raw of incomingCases){let incoming=normalizeCase(raw);const sourceId=String(raw?.id||incoming.id||''),key=importMergeKey(incoming),idCandidate=byId.get(incoming.id),folioExisting=L26IntegrityCore.findImportMatchByFolio([...byId.values()],incoming),existing=folioExisting||(idCandidate&&L26IntegrityCore.recordsMayMerge(idCandidate,incoming)?idCandidate:null)||(key?byKey.get(key):null);if(!existing&&byId.has(incoming.id))incoming.id=uid();const sameFolio=Boolean(existing&&L26IntegrityCore.importFolioKey(existing)&&L26IntegrityCore.importFolioKey(existing)===L26IntegrityCore.importFolioKey(incoming)),record=existing?(sameFolio?mergeImportedRecordPreservingExisting(existing,incoming):mergeCaseRecords(existing,incoming)):incoming;record.version=APP_VERSION;record.updatedAt=new Date().toISOString();record.syncMeta={...(record.syncMeta||{}),status:'pending',lastError:'',nextRetryAt:''};await idbPut(STORE_CASES,record);if(sourceId)idMap.set(sourceId,record.id);if(existing)merged++;else created++;byId.set(record.id,record);const recordKey=importMergeKey(record);if(recordKey)byKey.set(recordKey,record)}
+   for(const meta of attachments.photos||[]){const copy={...meta},path=copy.file,target=idMap.get(copy.caseId)||copy.caseId;delete copy.file;delete copy.mime;copy.caseId=target;if(path&&files[path]){copy.blob=new Blob([files[path]],{type:meta.mime||'image/jpeg'});delete copy.blobData;await idbPut(STORE_PHOTOS,copy);photos++}}
+   for(const meta of attachments.documents||[]){const copy={...meta},path=copy.file,target=idMap.get(copy.caseId)||copy.caseId;delete copy.file;delete copy.mime;copy.caseId=target;if(path&&files[path]){copy.blob=new Blob([files[path]],{type:meta.mime||'application/pdf'});delete copy.blobData;await idbPut(STORE_DOCUMENTS,copy);documents++}}
+   for(const sig of attachments.signatures||[]){const target=idMap.get(sig.caseId)||sig.caseId;if(!sig.file||!files[sig.file])continue;const record=await idbGet(STORE_CASES,target);if(!record)continue;record.report={...(record.report||{}),signature:bytesToDataUrl(files[sig.file],sig.mime||'image/png')};record.updatedAt=new Date().toISOString();await idbPut(STORE_CASES,record)}
+@@ -3034,7 +3043,7 @@
+ }
+ function caseRowStateClass(c){const stage=workflowStageKey(c),alarm=caseNeedsAgeAlarm(c)?' case-row-overdue':'';return `case-row-stage-${stage}${alarm}`}
+ function bindCaseRowActions(row,c){row.querySelector('[data-open]')?.addEventListener('click',()=>loadCase(c.id));row.querySelector('[data-delete]')?.addEventListener('click',()=>deleteCase(c.id));const actions=row.querySelector('.case-actions');if(!actions)return;if(c.sourceLink){const open=document.createElement('button');open.type='button';open.className='btn small pdf-link';open.textContent='🔗 Abrir';open.title='Abrir enlace del expediente';open.onclick=()=>openCaseSource(c);actions.appendChild(open);}const attach=document.createElement('button');attach.type='button';attach.className='btn small secondary';attach.textContent='📎 Adjuntar';attach.title='Adjuntar imagen o PDF';attach.onclick=()=>chooseCaseAttachment(c);actions.appendChild(attach)}
+-function caseFolioOrFinca(c){return String(c?.general?.finca||c?.general?.folio||'').trim()}
++function caseFolioOrFinca(c){const value=String(c?.general?.finca||c?.general?.folio||'').trim();return value||'Información posesoria'}
+ function downloadPlaceNotes(placeName,cases){const rows=[['Número de trámite','Folio o finca'],...cases.map(c=>[c.general?.tramite||'',caseFolioOrFinca(c)])],csv=rows.map(row=>row.map(value=>`"${String(value??'').replace(/"/g,'""')}"`).join(',')).join('\r\n'),name=`Notas_${fileNamePart(placeName,'Poblado')}_${new Date().toISOString().slice(0,10)}.csv`;downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),name)}
+ function appendPlaceNotes(placeSection,placeName,cases){const records=cases.map(c=>({tramite:c.general?.tramite||'',folio:caseFolioOrFinca(c)||''}));placeSection.insertAdjacentHTML('beforeend',ImportRules.placeNotesMarkup(placeName,records));const notes=placeSection.lastElementChild;notes?.querySelector('[data-download-place-notes]')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();downloadPlaceNotes(placeName,cases)})}
+ 
+@@ -3048,12 +3057,12 @@
+   for(const group of districts.values()){
+     districtIndex++;group.name=L26TerritoryCore.formatDistrict(preferredProcessGeoName(group.labels,group.name));
+     const section=document.createElement('details'),headingId=`${prefix}-district-${districtIndex}`,districtOpenKey=hierarchyDistrictOpenKey(prefix,group.name);section.className='district-group';section.dataset.hierarchyOpenKey=districtOpenKey;section.open=Boolean(hierarchyOpenState[districtOpenKey]);
+-    section.innerHTML=`<summary class="district-accordion-summary"><span><b id="${headingId}">${esc(group.name)}</b></span><span class="district-count compact-count" aria-label="${group.cases.length} ${group.cases.length===1?'trámite':'trámites'}" title="${group.cases.length} ${group.cases.length===1?'trámite':'trámites'}">${group.cases.length}</span></summary><div class="district-accordion-body district-place-list"></div>`;
++    section.innerHTML=`<summary class="district-accordion-summary"><span><b id="${headingId}">${esc(group.name)}</b></span><span class="district-count compact-count" aria-label="${L26IntegrityCore.uniqueFolioCount(group.cases)} ${L26IntegrityCore.uniqueFolioCount(group.cases)===1?'trámite':'trámites'}" title="${L26IntegrityCore.uniqueFolioCount(group.cases)} ${L26IntegrityCore.uniqueFolioCount(group.cases)===1?'trámite':'trámites'}">${L26IntegrityCore.uniqueFolioCount(group.cases)}</span></summary><div class="district-accordion-body district-place-list"></div>`;
+     const districtPlaceList=section.querySelector('.district-place-list'),orderedPlaces=[...group.places.values()].map(pg=>{pg.name=L26TerritoryCore.formatPlace(preferredProcessGeoName(pg.labels,pg.name));pg.cases.sort(compareCaseDatesOldestFirst);return pg}).sort((a,b)=>caseNaturalCollator.compare(caseSortText(a.name),caseSortText(b.name)));
+     let placeIndex=0;
+     for(const pg of orderedPlaces){
+       placeIndex++;const place=document.createElement('details'),placeHeadingId=`${prefix}-place-${districtIndex}-${placeIndex}`,key=hierarchyPageKey(prefix,group.name,pg.name),placeOpenKey=hierarchyPlaceOpenKey(prefix,group.name,pg.name),total=Math.max(1,Math.ceil(pg.cases.length/HIERARCHY_PAGE_SIZE)),page=Math.min(hierarchyPageState[key]||1,total);hierarchyPageState[key]=page;
+-      place.className='place-group';place.dataset.hierarchyOpenKey=placeOpenKey;place.open=Boolean(hierarchyOpenState[placeOpenKey]);place.innerHTML=`<summary class="place-accordion-summary"><span><b id="${placeHeadingId}">${esc(pg.name)}</b></span><span>${pg.cases.length} ${pg.cases.length===1?'expediente':'expedientes'}</span></summary><div class="place-accordion-body"><div class="place-case-list"></div></div>`;
++      place.className='place-group';place.dataset.hierarchyOpenKey=placeOpenKey;place.open=Boolean(hierarchyOpenState[placeOpenKey]);place.innerHTML=`<summary class="place-accordion-summary"><span><b id="${placeHeadingId}">${esc(pg.name)}</b></span><span>${L26IntegrityCore.uniqueFolioCount(pg.cases)} ${L26IntegrityCore.uniqueFolioCount(pg.cases)===1?'expediente':'expedientes'}</span></summary><div class="place-accordion-body"><div class="place-case-list"></div></div>`;
+       const body=place.querySelector('.place-accordion-body'),list=place.querySelector('.place-case-list'),pageCases=pg.cases.slice((page-1)*HIERARCHY_PAGE_SIZE,page*HIERARCHY_PAGE_SIZE);
+       for(let index=0;index<pageCases.length;index++){
+         const c=pageCases[index],absoluteIndex=(page-1)*HIERARCHY_PAGE_SIZE+index,status=workflowStageLabel(c),inspectionDate=caseChronologyDate(c)||'Sin fecha',ageAlarm=caseNeedsAgeAlarm(c),sent=Boolean(c.emailSentAt||c.status==='Enviado'),docs=(documentsByCase.get(c.id)||[]).sort((a,b)=>String(b.uploadedAt||'').localeCompare(String(a.uploadedAt||''))),row=document.createElement('article');
+@@ -3119,7 +3128,7 @@
+   const seen=new Set();
+   return (await loadCasesWithTerritoryInference()).filter(c=>{
+     if(!managementInspectionCompleted(c))return false;
+-    const key=canonicalCaseKey(c.general?.tramite)||c.id;
++    const key=L26IntegrityCore.importFolioKey(c)||canonicalCaseKey(c.general?.tramite)||c.id;
+     if(seen.has(key))return false;
+     seen.add(key);return true;
+   }).sort(compareCasesByDistrictPlaceDate);
+@@ -3140,7 +3149,7 @@
+ function setManagementSelectOptions(select,entries,allLabel,selected){if(!select)return'';select.innerHTML=`<option value="">${esc(allLabel)}</option>${entries.map(x=>`<option value="${esc(x.key)}">${esc(x.label)}</option>`).join('')}`;select.value=entries.some(x=>x.key===selected)?selected:'';refreshSelectionControls(select);return select.value}
+ function refreshManagementFilterControls(cases){const q=$('#managementSearch'),y=$('#managementYearFilter'),d=$('#managementDistrictFilter'),p=$('#managementPlaceFilter'),n=$('#managementNotifiedFilter'),r=$('#managementRegisteredFilter'),agroBtn=$('#managementAgroFilter'),agroCount=$('#managementAgroCount');if(q&&q.value!==managementFilterState.query)q.value=managementFilterState.query;managementFilterState.year=setManagementSelectOptions(y,L26FilterCore.yearEntries(cases),'Todos los años',managementFilterState.year);const yearCases=L26FilterCore.filterByYear(cases,managementFilterState.year);managementFilterState.district=setManagementSelectOptions(d,managementDistrictEntries(yearCases),'Todos los distritos',managementFilterState.district);managementFilterState.place=setManagementSelectOptions(p,managementPlaceEntries(yearCases,managementFilterState.district),'Todos los lugares',managementFilterState.place);if(n)n.value=managementFilterState.notified;if(r)r.value=managementFilterState.registered;const agroTotal=cases.filter(c=>isAgroObservationCase(c)||c.terrain?.agroDeclared==='Sí').length;if(agroCount)agroCount.textContent=String(agroTotal);if(agroBtn){agroBtn.setAttribute('aria-pressed',managementFilterState.agroOnly?'true':'false');agroBtn.title=agroTotal?`Mostrar solo ${agroTotal} expediente(s) con uso agro`:'No hay expedientes agro indicados todavía.'}}
+ function filterManagementCases(cases){const q=normalizeBaseLocalFilterText(managementFilterState.query),yearCases=L26FilterCore.filterByYear(cases,managementFilterState.year),actionCases=L26ManagementCore.filterByActions(yearCases,managementFilterState);return actionCases.filter(c=>{if(q&&!managementSearchText(c).includes(q))return false;if(managementFilterState.district&&!processGeoNamesMatch(canonicalProcessGeoName(c.visit?.district||'Sin distrito'),managementFilterState.district))return false;if(managementFilterState.place&&!processGeoNamesMatch(canonicalProcessGeoName(casePlace(c)||'Sin poblado o lugar',{place:true}),managementFilterState.place))return false;if(managementFilterState.agroOnly&&!(isAgroObservationCase(c)||c.terrain?.agroDeclared==='Sí'))return false;return true})}
+-async function renderManagementList(){const host=$('#managementList'),summary=$('#managementSummary'),count=$('#managementCaseCount'),status=$('#managementFilterStatus');if(!host||(!db&&storageMode!=='memory'))return;const all=await managementCases();refreshManagementFilterControls(all);const visible=filterManagementCases(all);if(count)count.textContent=visible.length;const districts=buildCaseHierarchy(visible),places=[...districts.values()].reduce((sum,d)=>sum+d.places.size,0);if(summary)summary.innerHTML=`<div><b>${visible.length}</b><span>Trámites</span></div><div><b>${districts.size}</b><span>Distritos</span></div><div><b>${places}</b><span>Grupos de población</span></div>`;if(status){const active=Boolean(normalizeBaseLocalFilterText(managementFilterState.query)||managementFilterState.year||managementFilterState.district||managementFilterState.place||managementFilterState.notified||managementFilterState.registered||managementFilterState.agroOnly),agroText=managementFilterState.agroOnly?' Filtro de uso agro activo.':'';status.textContent=active?`Mostrando ${visible.length} de ${all.length} expediente(s) según la búsqueda y los filtros seleccionados.${agroText}`:`Mostrando los ${all.length} trámite(s) disponibles en Gestión.`;}host.innerHTML='';if(!visible.length){host.innerHTML='<div class="notice">No hay trámites que coincidan con los filtros de Gestión.</div>';return}let di=0;for(const district of districts.values()){di++;district.name=L26TerritoryCore.formatDistrict(preferredProcessGeoName(district.labels,district.name));const d=document.createElement('details'),districtOpenKey=hierarchyDistrictOpenKey('managementList',district.name);d.className='district-group';d.dataset.hierarchyOpenKey=districtOpenKey;d.open=Boolean(hierarchyOpenState[districtOpenKey]);d.innerHTML=`<summary class="district-accordion-summary"><span><b>${esc(district.name)}</b></span><span class="district-count compact-count" aria-label="${district.cases.length} ${district.cases.length===1?'trámite':'trámites'}" title="${district.cases.length} ${district.cases.length===1?'trámite':'trámites'}">${district.cases.length}</span></summary><div class="district-accordion-body"></div>`;const dh=d.querySelector('.district-accordion-body'),ordered=[...district.places.values()].map(g=>{g.name=preferredPlaceName(g.labels);g.cases.sort(compareCaseDatesOldestFirst);return g}).sort((a,b)=>caseNaturalCollator.compare(caseSortText(a.name),caseSortText(b.name)));for(const place of ordered){const p=document.createElement('details'),key=hierarchyPageKey('managementList',district.name,place.name),placeOpenKey=hierarchyPlaceOpenKey('managementList',district.name,place.name),total=Math.max(1,Math.ceil(place.cases.length/HIERARCHY_PAGE_SIZE)),page=Math.min(hierarchyPageState[key]||1,total);hierarchyPageState[key]=page;p.className='place-group';p.dataset.hierarchyOpenKey=placeOpenKey;p.open=Boolean(hierarchyOpenState[placeOpenKey]);p.innerHTML=`<summary class="place-accordion-summary"><b>${esc(place.name)}</b><span>${place.cases.length} fiscalizado(s)</span></summary><div class="place-accordion-body"><div class="place-case-list"></div></div>`;const body=p.querySelector('.place-accordion-body'),rows=p.querySelector('.place-case-list');for(const c of place.cases.slice((page-1)*HIERARCHY_PAGE_SIZE,page*HIERARCHY_PAGE_SIZE)){const row=document.createElement('article'),mStatus=managementStatus(c),notification=managementNotificationState(c),outcome=effectiveFiscalOutcome(c),hasSource=Boolean(c.sourceLink||c.general?.sourceLink),ageAlarm=L26ManagementCore.isOlderThanYear(caseChronologyDate(c)),observation=String(c.general?.managementObservation||'').trim(),actionColor=L26ManagementCore.colorClass(c,ageAlarm);row.className=`case-row management-case-v22 ${caseRowStateClass(c)} ${mStatus.className} ${actionColor}${observation?' has-management-observation':''}`;row.innerHTML=`${observation?`<div class="management-observation-badge"><b>Observación</b>${esc(observation)}</div>`:''}<div class="management-fields-v22"><span><b>Expediente</b><strong>${esc(c.general?.tramite||'—')}</strong></span><span><b>Folio / finca</b><strong>${esc(caseFolioOrFinca(c)||'—')}</strong></span><span><b>Fecha de toma de datos</b><strong>${esc(managementInspectionDate(c))}</strong></span><span><b>Estado</b><strong class="management-status-badge ${mStatus.className}">${esc(mStatus.label)}</strong>${ageAlarm&&!notification.notified&&!notification.registered?'<em class="management-age-alarm">Alarma: más de un año</em>':''}</span></div><div class="management-actions-v22"><button class="btn primary small" data-management-open>Abrir expediente</button><button class="btn pdf small" data-management-report-pdf>PDF informe</button>${outcome==='OBJETAR'?'<button class="btn pdf small" data-management-rectification-pdf>Solicitud de rectificar</button>':''}${hasSource?'<button class="btn small" data-management-source-link>Abrir link</button>':''}<button class="btn small ${(notification.notified||notification.registered)?'primary':''}" data-management-notification>Notificado / Registrado</button></div>`;row.querySelector('[data-management-open]').addEventListener('click',()=>loadCase(c.id));row.querySelector('[data-management-report-pdf]').addEventListener('click',async()=>{const selected=await idbGet(STORE_CASES,c.id);if(!selected)return;state.current=normalizeCase(selected);state.audit=Array.isArray(state.current.repositoryAudit?.items)?state.current.repositoryAudit.items:[];renderAll();await openEditableReport(true,'all')});row.querySelector('[data-management-rectification-pdf]')?.addEventListener('click',async()=>{const selected=await idbGet(STORE_CASES,c.id);if(!selected)return;state.current=normalizeCase(selected);state.audit=Array.isArray(state.current.repositoryAudit?.items)?state.current.repositoryAudit.items:[];renderAll();printRectification()});row.querySelector('[data-management-source-link]')?.addEventListener('click',()=>openCaseSource(c));row.querySelector('[data-management-notification]')?.addEventListener('click',()=>openManagementActionModal(c));rows.appendChild(row)}renderPlacePagination(body,key,total,page,()=>renderManagementList());dh.appendChild(p)}host.appendChild(d)}}
++async function renderManagementList(){const host=$('#managementList'),summary=$('#managementSummary'),count=$('#managementCaseCount'),status=$('#managementFilterStatus');if(!host||(!db&&storageMode!=='memory'))return;const all=await managementCases();refreshManagementFilterControls(all);const visible=filterManagementCases(all);if(count)count.textContent=L26IntegrityCore.uniqueFolioCount(visible);const districts=buildCaseHierarchy(visible),places=[...districts.values()].reduce((sum,d)=>sum+d.places.size,0);if(summary)summary.innerHTML=`<div><b>${L26IntegrityCore.uniqueFolioCount(visible)}</b><span>Trámites</span></div><div><b>${districts.size}</b><span>Distritos</span></div><div><b>${places}</b><span>Grupos de población</span></div>`;if(status){const active=Boolean(normalizeBaseLocalFilterText(managementFilterState.query)||managementFilterState.year||managementFilterState.district||managementFilterState.place||managementFilterState.notified||managementFilterState.registered||managementFilterState.agroOnly),agroText=managementFilterState.agroOnly?' Filtro de uso agro activo.':'';status.textContent=active?`Mostrando ${L26IntegrityCore.uniqueFolioCount(visible)} de ${L26IntegrityCore.uniqueFolioCount(all)} expediente(s) según la búsqueda y los filtros seleccionados.${agroText}`:`Mostrando los ${L26IntegrityCore.uniqueFolioCount(all)} trámite(s) disponibles en Gestión.`;}host.innerHTML='';if(!visible.length){host.innerHTML='<div class="notice">No hay trámites que coincidan con los filtros de Gestión.</div>';return}let di=0;for(const district of districts.values()){di++;district.name=L26TerritoryCore.formatDistrict(preferredProcessGeoName(district.labels,district.name));const d=document.createElement('details'),districtOpenKey=hierarchyDistrictOpenKey('managementList',district.name);d.className='district-group';d.dataset.hierarchyOpenKey=districtOpenKey;d.open=Boolean(hierarchyOpenState[districtOpenKey]);d.innerHTML=`<summary class="district-accordion-summary"><span><b>${esc(district.name)}</b></span><span class="district-count compact-count" aria-label="${L26IntegrityCore.uniqueFolioCount(district.cases)} ${L26IntegrityCore.uniqueFolioCount(district.cases)===1?'trámite':'trámites'}" title="${L26IntegrityCore.uniqueFolioCount(district.cases)} ${L26IntegrityCore.uniqueFolioCount(district.cases)===1?'trámite':'trámites'}">${L26IntegrityCore.uniqueFolioCount(district.cases)}</span></summary><div class="district-accordion-body"></div>`;const dh=d.querySelector('.district-accordion-body'),ordered=[...district.places.values()].map(g=>{g.name=preferredPlaceName(g.labels);g.cases.sort(compareCaseDatesOldestFirst);return g}).sort((a,b)=>caseNaturalCollator.compare(caseSortText(a.name),caseSortText(b.name)));for(const place of ordered){const p=document.createElement('details'),key=hierarchyPageKey('managementList',district.name,place.name),placeOpenKey=hierarchyPlaceOpenKey('managementList',district.name,place.name),total=Math.max(1,Math.ceil(place.cases.length/HIERARCHY_PAGE_SIZE)),page=Math.min(hierarchyPageState[key]||1,total);hierarchyPageState[key]=page;p.className='place-group';p.dataset.hierarchyOpenKey=placeOpenKey;p.open=Boolean(hierarchyOpenState[placeOpenKey]);p.innerHTML=`<summary class="place-accordion-summary"><b>${esc(place.name)}</b><span>${L26IntegrityCore.uniqueFolioCount(place.cases)} fiscalizado(s)</span></summary><div class="place-accordion-body"><div class="place-case-list"></div></div>`;const body=p.querySelector('.place-accordion-body'),rows=p.querySelector('.place-case-list');for(const c of place.cases.slice((page-1)*HIERARCHY_PAGE_SIZE,page*HIERARCHY_PAGE_SIZE)){const row=document.createElement('article'),mStatus=managementStatus(c),notification=managementNotificationState(c),outcome=effectiveFiscalOutcome(c),hasSource=Boolean(c.sourceLink||c.general?.sourceLink),ageAlarm=L26ManagementCore.isOlderThanYear(caseChronologyDate(c)),observation=String(c.general?.managementObservation||'').trim(),actionColor=L26ManagementCore.colorClass(c,ageAlarm);row.className=`case-row management-case-v22 ${caseRowStateClass(c)} ${mStatus.className} ${actionColor}${observation?' has-management-observation':''}`;row.innerHTML=`${observation?`<div class="management-observation-badge"><b>Observación</b>${esc(observation)}</div>`:''}<div class="management-fields-v22"><span><b>Expediente</b><strong>${esc(c.general?.tramite||'—')}</strong></span><span><b>Folio / finca</b><strong>${esc(caseFolioOrFinca(c)||'—')}</strong></span><span><b>Fecha de toma de datos</b><strong>${esc(managementInspectionDate(c))}</strong></span><span><b>Estado</b><strong class="management-status-badge ${mStatus.className}">${esc(mStatus.label)}</strong>${ageAlarm&&!notification.notified&&!notification.registered?'<em class="management-age-alarm">Alarma: más de un año</em>':''}</span></div><div class="management-actions-v22"><button class="btn primary small" data-management-open>Abrir expediente</button><button class="btn pdf small" data-management-report-pdf>PDF informe</button>${outcome==='OBJETAR'?'<button class="btn pdf small" data-management-rectification-pdf>Solicitud de rectificar</button>':''}${hasSource?'<button class="btn small" data-management-source-link>Abrir link</button>':''}<button class="btn small ${(notification.notified||notification.registered)?'primary':''}" data-management-notification>Notificado / Registrado</button></div>`;row.querySelector('[data-management-open]').addEventListener('click',()=>loadCase(c.id));row.querySelector('[data-management-report-pdf]').addEventListener('click',async()=>{const selected=await idbGet(STORE_CASES,c.id);if(!selected)return;state.current=normalizeCase(selected);state.audit=Array.isArray(state.current.repositoryAudit?.items)?state.current.repositoryAudit.items:[];renderAll();await openEditableReport(true,'all')});row.querySelector('[data-management-rectification-pdf]')?.addEventListener('click',async()=>{const selected=await idbGet(STORE_CASES,c.id);if(!selected)return;state.current=normalizeCase(selected);state.audit=Array.isArray(state.current.repositoryAudit?.items)?state.current.repositoryAudit.items:[];renderAll();printRectification()});row.querySelector('[data-management-source-link]')?.addEventListener('click',()=>openCaseSource(c));row.querySelector('[data-management-notification]')?.addEventListener('click',()=>openManagementActionModal(c));rows.appendChild(row)}renderPlacePagination(body,key,total,page,()=>renderManagementList());dh.appendChild(p)}host.appendChild(d)}}
+ 
+ function normalizeBaseLocalFilterText(value){return String(value||'').trim().replace(/\s+/g,' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-CR')}
+ function baseLocalCaseSearchText(c){return normalizeBaseLocalFilterText([c?.general?.folio,c?.general?.tramite,c?.general?.finca,casePlace(c)].filter(Boolean).join(' '))}
+@@ -3153,7 +3162,7 @@
+ function filterBaseLocalCases(cases){const query=normalizeBaseLocalFilterText(baseLocalFilterState.query),district=baseLocalFilterState.district,place=baseLocalFilterState.place,yearCases=L26FilterCore.filterByYear(cases,baseLocalFilterState.year);return yearCases.filter(c=>{if(query&&!baseLocalCaseSearchText(c).includes(query))return false;if(district&&!processGeoNamesMatch(canonicalProcessGeoName(c?.visit?.district||'Sin distrito'),district))return false;if(place&&!processGeoNamesMatch(canonicalProcessGeoName(casePlace(c)||'Sin poblado o lugar',{place:true}),place))return false;if(baseLocalFilterState.agroOnly&&!(isAgroObservationCase(c)||c.terrain?.agroDeclared==='Sí'))return false;return true})}
+ function updateBaseLocalFilterStatus(visible,total){const status=$('#baseLocalFilterStatus');if(!status)return;const active=Boolean(normalizeBaseLocalFilterText(baseLocalFilterState.query)||baseLocalFilterState.year||baseLocalFilterState.district||baseLocalFilterState.place||baseLocalFilterState.agroOnly);const agroText=baseLocalFilterState.agroOnly?' Filtro de uso agro activo.':'';status.textContent=active?`Mostrando ${visible} de ${total} expediente(s) según la búsqueda y los filtros seleccionados.${agroText}`:`Mostrando los ${total} trámite(s) activos de Fiscalización, sin trasladar a Gestión.`}
+ 
+-async function renderCaseList(){if(!db&&storageMode!=='memory')return;const processHost=$('#caseList'),summary=$('#caseHierarchySummary'),all=(await loadCasesWithTerritoryInference()).sort(compareCasesByDistrictPlaceDate),localCases=all.filter(c=>!managementInspectionCompleted(c)),transferredCases=all.filter(c=>managementInspectionCompleted(c)),summaryCounts=L26ManagementCore.summaryCounts(all,managementInspectionCompleted),districts=buildProcessCaseHierarchy(localCases),placeGroupCount=[...districts.values()].reduce((n,d)=>n+d.places.size,0),alarmCount=localCases.filter(c=>caseNeedsAgeAlarm(c)).length;refreshBaseLocalFilterControls(localCases);const visibleCases=filterBaseLocalCases(localCases),emptyMessage=localCases.length?'No hay expedientes que coincidan con la búsqueda o los filtros seleccionados.':'No hay trámites activos de Fiscalización pendientes de traslado a Gestión.';$('#processCaseCount').textContent=visibleCases.length;updateBaseLocalFilterStatus(visibleCases.length,localCases.length);if(summary)summary.innerHTML=`<div><b>${summaryCounts.total}</b><span>Trámites</span></div><div class="summary-process"><b>${summaryCounts.active}</b><span>Activos</span></div><div class="summary-completed"><b>${summaryCounts.management}</b><span>En Gestión</span></div><div><b>${districts.size}</b><span>Distritos</span></div><div><b>${placeGroupCount}</b><span>Grupos de población</span></div><div class="summary-alarm"><b>${alarmCount}</b><span>Alarmas +1 año</span></div>`;await renderCaseHierarchy(processHost,visibleCases,emptyMessage);if(!localCases.length&&summary&&transferredCases.length)summary.insertAdjacentHTML('beforeend',`<p class="transferred-note">${transferredCases.length} expediente(s) permanecen resguardados en Gestión.</p>`);await renderManagementList()}
++async function renderCaseList(){if(!db&&storageMode!=='memory')return;const processHost=$('#caseList'),summary=$('#caseHierarchySummary'),all=(await loadCasesWithTerritoryInference()).sort(compareCasesByDistrictPlaceDate),localCases=all.filter(c=>!managementInspectionCompleted(c)),transferredCases=all.filter(c=>managementInspectionCompleted(c)),summaryCounts=L26ManagementCore.summaryCounts(all,managementInspectionCompleted),districts=buildProcessCaseHierarchy(localCases),placeGroupCount=[...districts.values()].reduce((n,d)=>n+d.places.size,0),alarmCount=localCases.filter(c=>caseNeedsAgeAlarm(c)).length;refreshBaseLocalFilterControls(localCases);const visibleCases=filterBaseLocalCases(localCases),emptyMessage=localCases.length?'No hay expedientes que coincidan con la búsqueda o los filtros seleccionados.':'No hay trámites activos de Fiscalización pendientes de traslado a Gestión.';$('#processCaseCount').textContent=L26IntegrityCore.uniqueFolioCount(visibleCases);updateBaseLocalFilterStatus(L26IntegrityCore.uniqueFolioCount(visibleCases),L26IntegrityCore.uniqueFolioCount(localCases));if(summary)summary.innerHTML=`<div><b>${summaryCounts.total}</b><span>Trámites</span></div><div class="summary-process"><b>${summaryCounts.active}</b><span>Activos</span></div><div class="summary-completed"><b>${summaryCounts.management}</b><span>En Gestión</span></div><div><b>${districts.size}</b><span>Distritos</span></div><div><b>${placeGroupCount}</b><span>Grupos de población</span></div><div class="summary-alarm"><b>${alarmCount}</b><span>Alarmas +1 año</span></div>`;await renderCaseHierarchy(processHost,visibleCases,emptyMessage);if(!localCases.length&&summary&&transferredCases.length)summary.insertAdjacentHTML('beforeend',`<p class="transferred-note">${transferredCases.length} expediente(s) permanecen resguardados en Gestión.</p>`);await renderManagementList()}
+ $('#refreshCasesBtn').addEventListener('click',renderCaseList);
+ $('#baseLocalSearch')?.addEventListener('input',event=>{baseLocalFilterState.query=event.target.value;clearTimeout(baseLocalSearchTimer);baseLocalSearchTimer=setTimeout(renderCaseList,120)});
+ $('#baseLocalYearFilter')?.addEventListener('change',event=>{baseLocalFilterState.year=event.target.value;baseLocalFilterState.district='';baseLocalFilterState.place='';renderCaseList()});
+--- a/sw.js
++++ b/sw.js
+@@ -1,4 +1,4 @@
+-const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1-conformidad-v1-windows-desktop-launch-v1-desktop-bridge-fallback-v2-pdf-compat-v1-compact-districts-v1-android-offline-pdf-ocr-v1-rebuild-reader-v2-metro-protocol-handoff-v1-release-27.3.9';
++const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1-conformidad-v1-windows-desktop-launch-v1-desktop-bridge-fallback-v2-pdf-compat-v1-compact-districts-v1-android-offline-pdf-ocr-v1-rebuild-reader-v2-metro-protocol-handoff-v1-folio-dedupe-posesoria-v1-release-27.3.9';
+ const CORE=['./','./index.html','./app/index.html','./app/assets/import_rules.js','./app/assets/l26_integrity_core.js','./app/assets/l26_management_core.js','./app/assets/l26_territory_core.js','./app/assets/l26_reader_apply_core.js','./app/assets/l26_excel_import_core.js','./app/assets/l26_croquis_core.js','./app/assets/l26_filter_core.js','./app/assets/l26_pdf_reader.js','./manifest.webmanifest','./favicon-48.png','./apple-touch-icon.png','./icon-192.png','./icon-512.png','./icon-maskable-192.png','./icon-maskable-512.png'];
+ const PDFJS_CACHE='l26-pdfjs-4.10.38-legacy-v2';
+ const PDFJS_ASSETS=['./app/assets/vendor/pdfjs-4.10.38-legacy/pdf.min.mjs','./app/assets/vendor/pdfjs-4.10.38-legacy/pdf.worker.min.mjs'];
+--- a/app/assets/import_rules.js
++++ b/app/assets/import_rules.js
+@@ -111,6 +111,8 @@
+   }
+ 
+   function recordIdentity(record) {
++    const folio = compact(record?.folio || record?.finca);
++    if (folio) return `F:${folio}`;
+     const tramite = compact(record?.tramite);
+     const property = propertyIdentity(record);
+     if (tramite) return `T:${tramite}|${property || 'NO-PROP'}`;
+--- a/app/assets/l26_excel_import_core.js
++++ b/app/assets/l26_excel_import_core.js
+@@ -122,7 +122,7 @@
+   }
+   function importRecordsFromWorkbook(workbook){const layout=detectWorkbookLayout(workbook),sheet=workbook.sheets[layout.sheetIndex],records=mapRowsToRecords(sheet.rows,layout.headerRowIndex,{sheetName:sheet.name,linkIndex:workbook.linkIndex,refs:sheet.refs,hyperlinks:sheet.hyperlinks});return{layout,records,warnings:[]}}
+   const normKey=v=>normalizeText(v).replace(/\s+/g,'');
+-  function canonicalIdentityKey(record){const g=record?.general||record||{},folio=normKey(g.folio),finca=normKey(g.finca),plano=normKey(g.plano),derecho=normKey(g.derecho||g.right),id=normKey(g.sourceId),tramite=normKey(g.tramite),base=folio||finca;if(tramite)return`T:${tramite}|B:${base}|P:${plano}|D:${derecho}`;if(base||plano||derecho)return`NO-T|B:${base}|P:${plano}|D:${derecho}`;if(id)return`NO-T|ID:${id}`;return''}
++  function canonicalIdentityKey(record){const g=record?.general||record||{},folio=normKey(g.folio),finca=normKey(g.finca),plano=normKey(g.plano),derecho=normKey(g.derecho||g.right),id=normKey(g.sourceId),tramite=normKey(g.tramite),base=folio||finca;if(base)return`F:${base}`;if(tramite)return`T:${tramite}|P:${plano}|D:${derecho}`;if(plano||derecho)return`NO-T|P:${plano}|D:${derecho}`;if(id)return`NO-T|ID:${id}`;return''}
+   function mergeNonEmpty(a,b){if(Array.isArray(a)||Array.isArray(b))return Array.isArray(a)&&a.length?a:b;if(a&&typeof a==='object'&&b&&typeof b==='object'){const out={...a};for(const [k,v] of Object.entries(b))out[k]=mergeNonEmpty(out[k],v);return out}return cleanPlaceholder(a)!==''?a:b}
+   function dedupeImportedRecords(records){const out=[],byKey=new Map();for(const r of records||[]){const k=canonicalIdentityKey(r);if(!k){out.push(r);continue}if(byKey.has(k)){const idx=byKey.get(k);out[idx]=mergeNonEmpty(out[idx],r)}else{byKey.set(k,out.length);out.push(r)}}return out}
+ 
+--- a/app/assets/l26_integrity_core.js
++++ b/app/assets/l26_integrity_core.js
+@@ -32,6 +32,9 @@
+     const prefix=tramite?`T:${tramite}`:'NO-T';
+     return`${prefix}|B:${base}|P:${plano}|D:${derecho}`;
+   }
++  function importFolioKey(record){const g=record?.general||record||{};return compact(g.folio||g.finca)}
++  function findImportMatchByFolio(records,candidate){const wanted=importFolioKey(candidate);if(!wanted)return null;return (Array.isArray(records)?records:[]).find(record=>importFolioKey(record)===wanted)||null}
++  function uniqueFolioCount(records){const seen=new Set();let count=0;for(const [index,record] of (Array.isArray(records)?records:[]).entries()){const folio=importFolioKey(record);const fallback=String(record?.id||record?.general?.tramite||record?.tramite||`ROW-${index}`);const key=folio?`F:${folio}`:`R:${fallback}`;if(seen.has(key))continue;seen.add(key);count++}return count}
+   function sameTramite(a,b){const x=canonicalTramite(a?.general?.tramite||a?.tramite||''),y=canonicalTramite(b?.general?.tramite||b?.tramite||'');return Boolean(x&&y&&x===y)}
+   function hasTramiteConflict(a,b){const x=canonicalTramite(a?.general?.tramite||a?.tramite||''),y=canonicalTramite(b?.general?.tramite||b?.tramite||'');return Boolean(x&&y&&x!==y)}
+   function recordsMayMerge(a,b){
+@@ -102,5 +105,5 @@
+     const totalIssues=duplicateIdentities.length+casesWithoutTramite.length+invalidDistricts.length+documentTramiteMismatches.length+sourceFileTramiteMismatches.length+documentNameTramiteMismatches.length;
+     return{generatedAt:new Date().toISOString(),duplicateIdentities,casesWithoutTramite,invalidDistricts,documentTramiteMismatches,sourceFileTramiteMismatches,documentNameTramiteMismatches,totalIssues};
+   }
+-  return{canonicalTramite,normalizeDistrict,caseIdentityKey,sameTramite,hasTramiteConflict,recordsMayMerge,findRecoveryCandidates,extractTramiteFromText,findDocumentCaseMatch,auditIntegrity};
++  return{canonicalTramite,normalizeDistrict,caseIdentityKey,importFolioKey,findImportMatchByFolio,uniqueFolioCount,sameTramite,hasTramiteConflict,recordsMayMerge,findRecoveryCandidates,extractTramiteFromText,findDocumentCaseMatch,auditIntegrity};
+ });
+--- a/app/assets/l26_management_core.js
++++ b/app/assets/l26_management_core.js
+@@ -27,11 +27,16 @@
+     return olderThanYear?'management-action-red':'management-action-yellow';
+   }
+   function activeCount(total,managementCount){return Math.max(0,(Number(total)||0)-(Number(managementCount)||0))}
++  const compactFolio=value=>String(value??'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'');
++  function folioCountKey(record,index=0){const g=record?.general||record||{},folio=compactFolio(g.folio||g.finca),fallback=String(record?.id||g.tramite||`ROW-${index}`);return folio?`F:${folio}`:`R:${fallback}`}
++  function uniqueCountByFolio(records){const seen=new Set();for(const [index,record] of (Array.isArray(records)?records:[]).entries())seen.add(folioCountKey(record,index));return seen.size}
+   function summaryCounts(cases,isManagement){
+     const list=Array.isArray(cases)?cases:[];
+     const predicate=typeof isManagement==='function'?isManagement:record=>Boolean(record?.management?.inspectionCompleted);
+-    const management=list.reduce((count,record)=>count+(predicate(record)?1:0),0);
+-    return{total:list.length,management,active:activeCount(list.length,management)};
++    const groups=new Map();
++    list.forEach((record,index)=>{const key=folioCountKey(record,index),state=groups.get(key)||{management:false};if(predicate(record))state.management=true;groups.set(key,state)});
++    const management=[...groups.values()].filter(state=>state.management).length;
++    return{total:groups.size,management,active:groups.size-management};
+   }
+   function isOlderThanYear(dateValue,now=new Date()){
+     const value=String(dateValue||'').trim();
+@@ -48,5 +53,5 @@
+     if(state.registered)return'Registrado';
+     return'Sin acción';
+   }
+-  return{actionState,filterByActions,colorClass,activeCount,summaryCounts,isOlderThanYear,actionLabel};
++  return{actionState,filterByActions,colorClass,activeCount,uniqueCountByFolio,summaryCounts,isOlderThanYear,actionLabel};
+ });
+--- a/tests/import_rules.test.js
++++ b/tests/import_rules.test.js
+@@ -67,15 +67,15 @@
+   });
+ });
+ 
+-test('conserva uno al repetir folio plano y derecho', () => {
++test('consolida todas las filas del mismo Folio aunque cambie el plano', () => {
+   const rows = [
+     { folio: '151448-000', plano: 'H-0324656-1996', derecho: '001', owner: 'Ana' },
+     { folio: '151448000', plano: 'H03246561996', derecho: '001', ownerId: '01-1114-0693' },
+     { folio: '151448-000', plano: 'H-9999999-2026', derecho: '001', owner: 'Otra' },
+   ];
+   const result = rules.dedupeRows(rows);
+-  assert.equal(result.records.length, 2);
+-  assert.equal(result.duplicates, 1);
++  assert.equal(result.records.length, 1);
++  assert.equal(result.duplicates, 2);
+   assert.equal(result.records[0].owner, 'Ana');
+   assert.equal(result.records[0].ownerId, '01-1114-0693');
+ });
+@@ -87,15 +87,15 @@
+   }), null);
+ });
+ 
+-test('407 filas con folios repetidos pero distinto plano o derecho conservan 407 expedientes', () => {
++test('407 filas con 47 folios se consolidan a 47 trámites por Folio', () => {
+   const rows = Array.from({ length: 407 }, (_, index) => ({
+     folio: String(100000 + (index % 47)),
+     plano: `H-${String(2000000 + index)}-2026`,
+     derecho: String((index % 3) + 1).padStart(3, '0'),
+   }));
+   const result = rules.dedupeRows(rows);
+-  assert.equal(result.records.length, 407);
+-  assert.equal(result.duplicates, 0);
++  assert.equal(result.records.length, 47);
++  assert.equal(result.duplicates, 360);
+ });
+ 
+ test('nombra el nivel respecto de la vía y firma la diferencia observada', () => {
+@@ -153,13 +153,13 @@
+   assert.equal(result.invalidDistrict,'Chilamate');
+ });
+ 
+-test('dedupeRows conserva trámites distintos aunque compartan propiedad',()=>{
++test('dedupeRows consolida trámites distintos cuando comparten el mismo Folio',()=>{
+   const result=rules.dedupeRows([
+     {tramite:'2024-07370',folio:'275480',plano:'H-1-2020',derecho:'001'},
+     {tramite:'2025-17123',folio:'275480',plano:'H-1-2020',derecho:'001'}
+   ]);
+-  assert.equal(result.records.length,2);
+-  assert.equal(result.duplicates,0);
++  assert.equal(result.records.length,1);
++  assert.equal(result.duplicates,1);
+ });
+ 
+ test('lector separa fecha de declaración y fecha de inspección y no aplica fecha genérica',()=>{
+--- a/tests/l26_transaction_identity.test.js
++++ b/tests/l26_transaction_identity.test.js
+@@ -2,13 +2,13 @@
+ const assert=require('node:assert/strict');
+ const core=require('../app/assets/l26_excel_import_core.js');
+ 
+-test('misma propiedad con trámites distintos nunca se deduplica',()=>{
++test('misma propiedad con trámites distintos se consolida por Folio',()=>{
+   const records=[
+     {general:{tramite:'2024-07370',folio:'275480',finca:'275480',plano:'H-1234567-2020',derecho:'001'}},
+     {general:{tramite:'2025-17123',folio:'275480',finca:'275480',plano:'H-1234567-2020',derecho:'001'}}
+   ];
+-  assert.notEqual(core.canonicalIdentityKey(records[0]),core.canonicalIdentityKey(records[1]));
+-  assert.equal(core.dedupeImportedRecords(records).length,2);
++  assert.equal(core.canonicalIdentityKey(records[0]),core.canonicalIdentityKey(records[1]));
++  assert.equal(core.dedupeImportedRecords(records).length,1);
+ });
+ 
+ test('repetición exacta de trámite y propiedad sí se consolida',()=>{
+--- a/tests/test_compact_district_layout.py
++++ b/tests/test_compact_district_layout.py
+@@ -19,8 +19,8 @@
+ def test_district_summary_uses_compact_count_badge_in_both_lists():
+     # The requested compact header shows the district name and a small numeric count only.
+     assert 'class="district-count compact-count"' in HTML
+-    assert 'aria-label="${group.cases.length} ${group.cases.length===1?\'trámite\':\'trámites\'}"' in HTML
+-    assert 'aria-label="${district.cases.length} ${district.cases.length===1?\'trámite\':\'trámites\'}"' in HTML
++    assert 'aria-label="${L26IntegrityCore.uniqueFolioCount(group.cases)} ${L26IntegrityCore.uniqueFolioCount(group.cases)===1?\'trámite\':\'trámites\'}"' in HTML
++    assert 'aria-label="${L26IntegrityCore.uniqueFolioCount(district.cases)} ${L26IntegrityCore.uniqueFolioCount(district.cases)===1?\'trámite\':\'trámites\'}"' in HTML
+ 
+ 
+ def test_service_worker_cache_refreshes_compact_layout():
+--- a/tests/test_l26_20260827_requests.py
++++ b/tests/test_l26_20260827_requests.py
+@@ -104,7 +104,7 @@
+     active=function_block('renderCaseList')
+     assert 'all.filter(c=>!managementInspectionCompleted(c))' in active
+     assert 'L26ManagementCore.summaryCounts(all,managementInspectionCompleted)' in active
+-    assert "$('#processCaseCount').textContent=visibleCases.length" in active
++    assert "$('#processCaseCount').textContent=L26IntegrityCore.uniqueFolioCount(visibleCases)" in active
+ 
+ 
+ def test_final_decision_controls_are_compact_not_removed():
+--- a/tests/test_l26_release_contract.py
++++ b/tests/test_l26_release_contract.py
+@@ -22,7 +22,7 @@
+     imp=fn('findExistingCaseForImport','saveImportedCaseWithoutDuplicates')
+     assert 'caseCoreIdentity' in imp
+     restore=fn('importManagementPackage','bindPackageControls')
+-    assert 'caseCoreIdentity' in restore
++    assert 'importMergeKey' in restore and 'findImportMatchByFolio' in restore
+ 
+ def test_pwa_waits_for_manual_activation_and_is_cache_first():
+     assert 'self.skipWaiting()' not in re.search(r"self.addEventListener\('install'.*?\);",SW,re.S).group(0)
+--- /dev/null
++++ b/tests/l26_folio_posesoria_import.test.js
+@@ -0,0 +1,46 @@
++'use strict';
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const excel=require('../app/assets/l26_excel_import_core.js');
++const integrity=require('../app/assets/l26_integrity_core.js');
++const management=require('../app/assets/l26_management_core.js');
++
++test('Excel consolida por Folio aunque cambien trámite, plano o derecho',()=>{
++  const rows=[
++    {general:{tramite:'2026-100',folio:'151448-000',finca:'151448-000',plano:'H-1',derecho:'001',propietario:'Ana'}},
++    {general:{tramite:'2026-101',folio:'151448000',finca:'151448000',plano:'H-2',derecho:'002',identificacion:'1-1111-1111'}},
++  ];
++  const out=excel.dedupeImportedRecords(rows);
++  assert.equal(out.length,1);
++  assert.equal(out[0].general.folio,'151448-000');
++  assert.equal(out[0].general.identificacion,'1-1111-1111');
++});
++
++test('JSON encuentra existente por Folio/Finca antes de crear otro trámite',()=>{
++  const cases=[
++    {id:'a',general:{tramite:'2025-1',folio:'275480',finca:'275480',plano:'H-1',right:'001'}},
++    {id:'b',general:{tramite:'2025-2',folio:'999999',finca:'999999',plano:'H-2',right:'001'}},
++  ];
++  const incoming={id:'nuevo',general:{tramite:'2026-8',folio:'275-480',finca:'',plano:'H-OTRO',right:'002'}};
++  assert.equal(integrity.findImportMatchByFolio(cases,incoming)?.id,'a');
++});
++
++test('conteo de trámites usa Folio/Finca único y posesoria sin Folio cuenta individualmente',()=>{
++  const cases=[
++    {id:'a',general:{folio:'275480'},management:{inspectionCompleted:false}},
++    {id:'b',general:{folio:'275-480'},management:{inspectionCompleted:false}},
++    {id:'c',general:{finca:'999999'},management:{inspectionCompleted:true}},
++    {id:'p1',general:{folio:'',finca:'',informacionPosesoria:true},management:{inspectionCompleted:false}},
++    {id:'p2',general:{folio:'',finca:'',informacionPosesoria:true},management:{inspectionCompleted:false}},
++  ];
++  assert.equal(integrity.uniqueFolioCount(cases),4);
++  assert.deepEqual(management.summaryCounts(cases,r=>Boolean(r.management?.inspectionCompleted)),{total:4,management:1,active:3});
++});
++
++test('un Folio trasladado a Gestión no se vuelve a contar como activo por un duplicado histórico',()=>{
++  const cases=[
++    {id:'activo-antiguo',general:{folio:'777-001'},management:{inspectionCompleted:false}},
++    {id:'gestion',general:{folio:'777001'},management:{inspectionCompleted:true}},
++  ];
++  assert.deepEqual(management.summaryCounts(cases,r=>Boolean(r.management?.inspectionCompleted)),{total:1,management:1,active:0});
++});
+--- /dev/null
++++ b/tests/test_posesoria_folio_contract.py
+@@ -0,0 +1,16 @@
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[1]
++HTML=(ROOT/'index.html').read_text(encoding='utf-8')
++
++def test_general_offers_posesoria_only_without_folio_or_finca():
++    assert 'id="posesoriaOption"' in HTML
++    assert 'data-path="general.informacionPosesoria"' in HTML
++    assert 'function refreshPosesoriaOption' in HTML
++    assert "general?.folio" in HTML and "general?.finca" in HTML
++
++def test_tramites_labels_missing_registry_identity_as_posesoria():
++    assert "Información posesoria" in HTML
++    assert 'function caseFolioOrFinca' in HTML
++
++def test_json_import_uses_folio_merge_helper():
++    assert 'findImportMatchByFolio' in HTML

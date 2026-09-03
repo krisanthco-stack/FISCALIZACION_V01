@@ -47,7 +47,7 @@ Conserve una copia segura del `.jks` y las contraseñas fuera de GitHub. Si se p
 
 ## PDF en Windows y Android
 
-Los dos builds ejecutan `python scripts/vendor_pdfjs.py --required` antes de empaquetar. El script fija **PDF.js 4.10.38 legacy**, obtiene el paquete desde dos registros alternativos y copia dentro de `app/assets/vendor/pdfjs/` el motor, el worker, CMaps y fuentes estándar. Si falta cualquiera de los recursos obligatorios, el APK no se construye.
+Los dos builds ejecutan `python scripts/vendor_pdfjs.py --required` antes de empaquetar. El script fija **PDF.js 4.10.38 legacy**, obtiene el paquete desde dos registros alternativos y copia dentro de `app/assets/vendor/pdfjs-4.10.38-legacy/` el motor, el worker, CMaps y fuentes estándar. Si falta cualquiera de los recursos obligatorios, el APK no se construye.
 
 El lector busca primero esa copia local. Por eso el `.exe` y el `.apk` publicados no dependen de Chrome ni de un CDN para abrir PDFs. La aplicación conserva además la compatibilidad `Uint8Array.toHex/fromHex` para Chromium/WebView que no implementen esas APIs.
 

@@ -1,0 +1,1043 @@
+--- a/.github/workflows/windows.yml
++++ b/.github/workflows/windows.yml
+@@ -31,6 +31,8 @@
+       - name: Construir instalador y portable
+         working-directory: desktop
+         run: npm run dist:win
++      - name: Verificar runtime empaquetado Windows
++        run: python scripts/verify_packaged_runtime.py --windows desktop/dist
+       - name: Verificar ejecutables
+         shell: pwsh
+         run: |
+--- a/.github/workflows/android.yml
++++ b/.github/workflows/android.yml
+@@ -38,6 +38,8 @@
+         run: python scripts/sync_android_assets.py
+       - name: Construir APK instalable
+         run: gradle --no-daemon -p android assembleDebug
++      - name: Verificar runtime offline dentro del APK
++        run: python scripts/verify_packaged_runtime.py --android android/app/build/outputs/apk/debug/app-debug.apk
+       - name: Preparar nombre de entrega
+         run: |
+           mkdir -p dist
+--- a/.github/workflows/release.yml
++++ b/.github/workflows/release.yml
+@@ -32,6 +32,8 @@
+       - name: Construir Windows
+         working-directory: desktop
+         run: npm run dist:win
++      - name: Verificar runtime empaquetado Windows
++        run: python scripts/verify_packaged_runtime.py --windows desktop/dist
+       - uses: actions/upload-artifact@v4
+         with:
+           name: release-windows
+@@ -86,6 +88,8 @@
+           test -n "$L26_ANDROID_KEY_ALIAS" || (echo "Falta secret L26_ANDROID_KEY_ALIAS" && exit 1)
+           test -n "$L26_ANDROID_KEY_PASSWORD" || (echo "Falta secret L26_ANDROID_KEY_PASSWORD" && exit 1)
+           gradle --no-daemon -p android assembleRelease
++      - name: Verificar runtime offline dentro del APK
++        run: python scripts/verify_packaged_runtime.py --android android/app/build/outputs/apk/release/app-release.apk
+       - name: Preparar APK
+         run: |
+           mkdir -p dist
+--- a/index.html
++++ b/index.html
+@@ -593,6 +593,8 @@
+           <button class="btn compact-control" id="excelTemplateBtn">Plantilla Excel</button>
+           <label class="btn primary compact-control" style="display:inline-block">Importar PDF<input id="pdfAutoImport" type="file" accept="application/pdf,.pdf" multiple hidden></label>
+           <button class="btn compact-control" id="expedientePackageExportBtn">Exportar paquete</button>
++          <button class="btn compact-control" id="globalJsonExportBtn">Descargar JSON completo</button>
++          <button class="btn compact-control" id="globalZipExportBtn">Descargar ZIP completo</button>
+           <label class="btn compact-control" style="display:inline-block">Cargar JSON / ZIP<input id="expedientePackageImport" type="file" accept=".zip,.json,application/zip,application/json" hidden></label>
+         </div>
+         <div class="tramites-statuses">
+@@ -1516,6 +1518,33 @@
+   if(result.casesRecovered||result.casesMerged)console.info('legacy-recovery',result);
+   return result;
+ }
++async function consolidateHistoricalFolioDuplicates(){
++  const all=(await idbAll(STORE_CASES)).map(normalizeCase),plan=L26IntegrityCore.planFolioConsolidation(all),result={groups:0,removed:0,photosRelinked:0,documentsRelinked:0,documentsDeduped:0,errors:[]};
++  if(!plan.groups.length)return result;
++  const byId=new Map(all.map(c=>[String(c.id),c]));
++  for(const group of plan.groups){
++    try{
++      let survivor=byId.get(String(group.survivorId));if(!survivor)continue;
++      const duplicates=group.duplicateIds.map(id=>byId.get(String(id))).filter(Boolean),reason=`Consolidación automática por Folio ${group.folio}`;
++      for(const record of [survivor,...duplicates])await backupCaseToRecovery(record,reason);
++      let merged=structuredClone(survivor);
++      for(const duplicate of duplicates)merged=L26IntegrityCore.mergeFolioDuplicateData(merged,duplicate);
++      const now=new Date().toISOString();
++      merged.id=survivor.id;merged.updatedAt=now;merged.version=APP_VERSION;
++      merged.integrityMigration={...(merged.integrityMigration||{}),type:'folio-consolidation',folio:group.folio,consolidatedAt:now,survivorId:survivor.id,mergedCaseIds:duplicates.map(c=>c.id),mergedTransactions:[...new Set([survivor,...duplicates].map(c=>String(c.general?.tramite||'').trim()).filter(Boolean))]};
++      merged.syncMeta={...(merged.syncMeta||{}),status:'pending',lastError:'',nextRetryAt:''};
++      merged=normalizeCase(merged);await idbPut(STORE_CASES,merged);
++      const duplicateIds=new Set(duplicates.map(c=>String(c.id)));
++      for(const photo of await idbAll(STORE_PHOTOS))if(duplicateIds.has(String(photo.caseId))){await idbPut(STORE_PHOTOS,{...photo,caseId:survivor.id});result.photosRelinked++}
++      const survivorDocs=await documentsForCase(survivor.id),docKeys=new Set(survivorDocs.map(d=>String(d.sha256||d.documentKey||'')).filter(Boolean));
++      for(const doc of await idbAll(STORE_DOCUMENTS))if(duplicateIds.has(String(doc.caseId))){const key=String(doc.sha256||doc.documentKey||'');if(key&&docKeys.has(key)){await idbDelete(STORE_DOCUMENTS,doc.id);result.documentsDeduped++;continue}await idbPut(STORE_DOCUMENTS,{...doc,caseId:survivor.id});if(key)docKeys.add(key);result.documentsRelinked++}
++      for(const duplicate of duplicates){await idbDelete(STORE_CASES,duplicate.id);byId.delete(String(duplicate.id));result.removed++}
++      byId.set(String(survivor.id),merged);await relinkCaseDocuments(merged);result.groups++;
++    }catch(error){result.errors.push(`${group.folio}: ${error?.message||error}`);console.error('Consolidación por Folio falló',group,error)}
++  }
++  if(result.groups)console.info('Consolidación física por Folio completada',result);
++  return result;
++}
+ async function photosForCase(caseId){const all=await idbAll(STORE_PHOTOS);return all.filter(p=>p.caseId===caseId)}
+ async function documentsForCase(caseId){const all=await idbAll(STORE_DOCUMENTS);return all.filter(d=>d.caseId===caseId).sort((a,b)=>String(b.uploadedAt||'').localeCompare(String(a.uploadedAt||'')))}
+ function normalizeDocumentPart(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'').trim()}
+@@ -2673,6 +2702,55 @@
+ }
+ function dataUrlToBytes(dataUrl){const m=String(dataUrl||'').match(/^data:([^;,]+)?(;base64)?,(.*)$/s);if(!m)throw new Error('Adjunto codificado no válido');if(m[2]){const bin=atob(m[3]);const out=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);return{mime:m[1]||'application/octet-stream',bytes:out}}return{mime:m[1]||'text/plain;charset=utf-8',bytes:new TextEncoder().encode(decodeURIComponent(m[3]))}}
+ function bytesToBase64(bytes){const view=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes),chunk=0x8000,parts=[];for(let i=0;i<view.length;i+=chunk)parts.push(String.fromCharCode(...view.subarray(i,i+chunk)));return btoa(parts.join(''))}
++async function serializeAttachmentForJson(record){const copy={...(record||{})};if(copy.blob){copy.blobData=await blobToDataUrl(copy.blob);delete copy.blob}else if(copy.blobData)copy.blobData=String(copy.blobData);return copy}
++async function serializeRecoveryPhotoForJson(record){const copy=structuredClone(record||{});if(copy.photo)copy.photo=await serializeAttachmentForJson(copy.photo);return copy}
++async function serializeRecoveryDocumentForJson(record){const copy=structuredClone(record||{});if(copy.document)copy.document=await serializeAttachmentForJson(copy.document);return copy}
++async function buildGlobalJsonBackup(){
++  const [cases,photos,documents,recoveryCases,recoveryPhotos,recoveryDocuments]=await Promise.all([idbAll(STORE_CASES),idbAll(STORE_PHOTOS),idbAll(STORE_DOCUMENTS),idbAll(STORE_RECOVERY_CASES),idbAll(STORE_RECOVERY_PHOTOS),idbAll(STORE_RECOVERY_DOCUMENTS)]),photoData=[],documentData=[],recoveryPhotoData=[],recoveryDocumentData=[];
++  for(const p of photos)photoData.push(await serializeAttachmentForJson(p));
++  for(const d of documents)documentData.push(await serializeAttachmentForJson(d));
++  for(const p of recoveryPhotos)recoveryPhotoData.push(await serializeRecoveryPhotoForJson(p));
++  for(const d of recoveryDocuments)recoveryDocumentData.push(await serializeRecoveryDocumentForJson(d));
++  return L26IntegrityCore.buildGlobalBackupEnvelope({appVersion:APP_VERSION,dbVersion:DB_VERSION,exportedAt:new Date().toISOString(),cases:cases.map(normalizeCase),photos:photoData,documents:documentData,recovery:{cases:recoveryCases,photos:recoveryPhotoData,documents:recoveryDocumentData},metadata:{database:DB_NAME,storageMode,deviceLocal:true,note:'Respaldo completo no destructivo de Fiscalización L-26'}});
++}
++async function exportGlobalJsonBackup(){const payload=await buildGlobalJsonBackup(),date=payload.exportedAt.slice(0,10);downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`Fiscalizacion_L26_Respaldo_Completo_${date}.json`);toast(`JSON completo descargado: ${payload.counts.cases} trámite(s), ${payload.counts.photos} foto(s) y ${payload.counts.documents} documento(s).`);return payload}
++async function exportGlobalZipBackup(){const payload=await buildGlobalJsonBackup(),date=payload.exportedAt.slice(0,10),manifest={schema:'FiscalizacionBIGlobalZip',schemaVersion:1,appVersion:APP_VERSION,exportedAt:payload.exportedAt,contains:'respaldo_completo.json',counts:payload.counts},bytes=zipStore([{name:'manifest.json',data:JSON.stringify(manifest,null,2)},{name:'respaldo_completo.json',data:JSON.stringify(payload,null,2)}]);downloadBlob(new Blob([bytes],{type:'application/zip'}),`Fiscalizacion_L26_Respaldo_Completo_${date}.zip`);toast(`ZIP completo descargado: ${payload.counts.cases} trámite(s) con toda la información local.`);return payload}
++async function restoreGlobalBackupAttachments(attachments,idMap){
++  const data=attachments&&typeof attachments==='object'?attachments:{},result={photos:0,documents:0,skipped:0},allPhotos=await idbAll(STORE_PHOTOS),allDocuments=await idbAll(STORE_DOCUMENTS),photoById=new Map(allPhotos.map(x=>[String(x.id||''),x]).filter(([id])=>id)),documentById=new Map(allDocuments.map(x=>[String(x.id||''),x]).filter(([id])=>id)),photoIds=new Set(photoById.keys()),documentIds=new Set(documentById.keys());
++  const freshId=(used)=>{let id=uid();while(used.has(String(id)))id=uid();return id};
++  for(const meta of data.photos||[]){
++    if(!meta||typeof meta!=='object')continue;
++    const target=idMap.get(String(meta.caseId||''))||meta.caseId;if(!target||!await idbGet(STORE_CASES,target)){result.skipped++;continue}
++    const collision=meta.id?photoById.get(String(meta.id)):null,existing=collision&&String(collision.caseId)===String(target)?collision:null;
++    let id=existing?.id||meta.id||freshId(photoIds);if(!existing&&photoIds.has(String(id)))id=freshId(photoIds);
++    const copy={...meta,...(existing||{}),id,caseId:target};if(!copy.blob&&copy.blobData){copy.blob=await(await fetch(copy.blobData)).blob()}delete copy.blobData;await idbPut(STORE_PHOTOS,copy);photoIds.add(String(id));photoById.set(String(id),copy);result.photos++;
++  }
++  for(const meta of data.documents||[]){
++    if(!meta||typeof meta!=='object')continue;
++    const target=idMap.get(String(meta.caseId||''))||meta.caseId;if(!target||!await idbGet(STORE_CASES,target)){result.skipped++;continue}
++    const existing=await documentsForCase(target),match=existing.find(x=>(meta.id&&x.id===meta.id)||(meta.documentKey&&x.documentKey===meta.documentKey)||(meta.sha256&&x.sha256===meta.sha256));
++    let id=match?.id||meta.id||freshId(documentIds);if(!match&&documentIds.has(String(id)))id=freshId(documentIds);
++    const copy={...meta,...(match||{}),id,caseId:target};if(!copy.blob&&copy.blobData){copy.blob=await(await fetch(copy.blobData)).blob()}delete copy.blobData;await idbPut(STORE_DOCUMENTS,copy);documentIds.add(String(id));documentById.set(String(id),copy);result.documents++;
++  }
++  return result;
++}
++async function restoreGlobalBackupRecovery(recovery,idMap=new Map()){
++  const data=recovery&&typeof recovery==='object'?recovery:{},result={cases:0,photos:0,documents:0,duplicates:0},caseArchive=await idbAll(STORE_RECOVERY_CASES),photoArchive=await idbAll(STORE_RECOVERY_PHOTOS),documentArchive=await idbAll(STORE_RECOVERY_DOCUMENTS),caseIds=new Set(caseArchive.map(x=>String(x.recoveryId||'')).filter(Boolean)),photoIds=new Set(photoArchive.map(x=>String(x.recoveryId||'')).filter(Boolean)),documentIds=new Set(documentArchive.map(x=>String(x.recoveryId||'')).filter(Boolean));
++  const mapCaseId=value=>idMap.get(String(value||''))||value;
++  const freshRecoveryId=(prefix,used)=>{let id=`${prefix}-${uid()}`;while(used.has(String(id)))id=`${prefix}-${uid()}`;return id};
++  for(const raw of data.cases||[]){if(!raw||typeof raw!=='object')continue;const copy=structuredClone(raw),sourceCaseId=copy.caseId||copy.case?.id||'',target=mapCaseId(sourceCaseId);copy.caseId=target;const duplicate=caseArchive.some(x=>String(x.snapshotId||'')===String(copy.snapshotId||'')&&String(x.caseId||'')===String(target)&&String(x.case?.id||'')===String(copy.case?.id||''));if(duplicate){result.duplicates++;continue}if(!copy.recoveryId||caseIds.has(String(copy.recoveryId)))copy.recoveryId=freshRecoveryId('global-recovery-case',caseIds);await idbPut(STORE_RECOVERY_CASES,copy);caseIds.add(String(copy.recoveryId));caseArchive.push(copy);result.cases++}
++  for(const raw of data.photos||[]){if(!raw||typeof raw!=='object')continue;const copy=structuredClone(raw),sourceCaseId=copy.caseId||copy.photo?.caseId||'',target=mapCaseId(sourceCaseId);copy.caseId=target;const duplicate=photoArchive.some(x=>String(x.snapshotId||'')===String(copy.snapshotId||'')&&String(x.caseId||'')===String(target)&&String(x.photo?.id||'')===String(copy.photo?.id||''));if(duplicate){result.duplicates++;continue}if(!copy.recoveryId||photoIds.has(String(copy.recoveryId)))copy.recoveryId=freshRecoveryId('global-recovery-photo',photoIds);if(copy.photo?.blobData){copy.photo.blob=await(await fetch(copy.photo.blobData)).blob();delete copy.photo.blobData}await idbPut(STORE_RECOVERY_PHOTOS,copy);photoIds.add(String(copy.recoveryId));photoArchive.push(copy);result.photos++}
++  for(const raw of data.documents||[]){if(!raw||typeof raw!=='object')continue;const copy=structuredClone(raw),sourceCaseId=copy.caseId||copy.document?.caseId||'',target=mapCaseId(sourceCaseId);copy.caseId=target;const duplicate=documentArchive.some(x=>String(x.snapshotId||'')===String(copy.snapshotId||'')&&String(x.caseId||'')===String(target)&&String(x.document?.id||'')===String(copy.document?.id||''));if(duplicate){result.duplicates++;continue}if(!copy.recoveryId||documentIds.has(String(copy.recoveryId)))copy.recoveryId=freshRecoveryId('global-recovery-doc',documentIds);if(copy.document?.blobData){copy.document.blob=await(await fetch(copy.document.blobData)).blob();delete copy.document.blobData}await idbPut(STORE_RECOVERY_DOCUMENTS,copy);documentIds.add(String(copy.recoveryId));documentArchive.push(copy);result.documents++}
++  return result;
++}
++async function importGlobalBackupPayload(data){
++  if(data?.schema!=='FiscalizacionBIGlobalExport')throw new Error('El JSON no corresponde a un respaldo global de Fiscalización L-26.');
++  const incoming=Array.isArray(data.cases)?data.cases:[];if(!incoming.length)throw new Error('El respaldo global no contiene trámites.');
++  if(!confirm(`Se combinarán ${incoming.length} trámite(s) del respaldo completo. No se borrarán datos actuales. ¿Continuar?`))throw new Error('Importación cancelada por el usuario.');
++  const imported=await importJsonCases(incoming),attachments=await restoreGlobalBackupAttachments(data.attachments,imported.idMap),recovery=await restoreGlobalBackupRecovery(data.recovery,imported.idMap),consolidation=await consolidateHistoricalFolioDuplicates();
++  await renderCaseList();showView('database');toast(`Respaldo completo cargado: ${imported.created} nuevo(s), ${imported.updated} actualizado(s), ${attachments.photos} foto(s), ${attachments.documents} documento(s).`);return{...imported,attachments,recovery,consolidation};
++}
++
+ async function exportCasePackage(c=state.current){
+   const payload=await buildJsonPackage(c),files=[{name:'expediente.json',data:JSON.stringify(payload,null,2)}];
+   for(const p of payload.attachments.photos||[]){if(!p.blobData)continue;const a=dataUrlToBytes(p.blobData),ext=(a.mime.split('/')[1]||'bin').split('+')[0];files.push({name:`fotografias/${safeName({general:{tramite:c.general?.tramite||'expediente'}})}_${p.id||uid()}.${ext}`,data:a.bytes})}
+@@ -2858,6 +2936,7 @@
+   if(!file)throw new Error('Seleccione un archivo ZIP o JSON.');
+   if(/\.json$/i.test(file.name)){
+     let data;try{data=JSON.parse(await file.text())}catch(error){throw new Error(`El JSON no es válido: ${error.message}`)}
++    if(data?.schema==='FiscalizacionBIGlobalExport')return importGlobalBackupPayload(data);
+     if(data?.schema==='FiscalizacionBIExport'&&data.case){
+       const known=(await idbAll(STORE_CASES)).map(normalizeCase),sourceId=String(data.case.id||''),result=await saveImportedCaseWithoutDuplicates(data.case,known),record=result.record;
+       for(const p of data.attachments?.photos||[]){const copy={...p,caseId:record.id};if(copy.blobData){copy.blob=await(await fetch(copy.blobData)).blob();delete copy.blobData}await idbPut(STORE_PHOTOS,copy)}
+@@ -2870,6 +2949,7 @@
+   }
+   if(!/\.zip$/i.test(file.name))throw new Error('Seleccione un archivo .zip o .json de expediente.');
+   const files=await unzipArchive(await file.arrayBuffer()),decoder=new TextDecoder();
++  const globalBackupName=findArchiveEntry(files,'respaldo_completo.json');if(globalBackupName){const data=JSON.parse(decoder.decode(files[globalBackupName]));if(data?.schema==='FiscalizacionBIGlobalExport')return importGlobalBackupPayload(data)}
+   const expedienteName=findArchiveEntry(files,'expediente.json'),expedientesName=findArchiveEntry(files,'expedientes.json'),adjuntosName=findArchiveEntry(files,'adjuntos.json');
+   /* Respaldo completo de Gestión, incluso de versiones anteriores: puede cargarse desde Trámites. */
+   if(expedientesName){
+@@ -2945,6 +3025,8 @@
+ function bindPackageControls(){
+   const bind=(id,handler)=>{const el=$(id);if(!el)return;el.addEventListener('click',async()=>{try{await handler()}catch(err){console.error(err);toast(`Operación falló: ${err.message}`)}})};
+   bind('#expedientePackageExportBtn',()=>exportCasePackage(state.current));
++  bind('#globalJsonExportBtn',()=>exportGlobalJsonBackup());
++  bind('#globalZipExportBtn',()=>exportGlobalZipBackup());
+   bind('#reportPackageExportBtn',()=>exportCasePackage(state.current));
+   bind('#managementPackageExportBtn',()=>exportManagementPackage());
+   [['#expedientePackageImport'],['#reportPackageImport']].forEach(([id])=>$(id)?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{await importCasePackage(f)}catch(err){console.error(err);toast(`Importación falló: ${err.message}`)}finally{e.target.value=''}}));
+@@ -3283,7 +3365,7 @@
+ 
+ $('#baseRecoveryBtn')?.addEventListener('click',async()=>{const p=$('#baseRecoveryPanel');if(!p)return;p.hidden=!p.hidden;if(!p.hidden)await renderRecoveryPanel('baseRecoveryPanel')});
+ $('#managementRecoveryBtn')?.addEventListener('click',async()=>{const p=$('#managementRecoveryPanel');if(!p)return;p.hidden=!p.hidden;if(!p.hidden)await renderRecoveryPanel('managementRecoveryPanel')});
+-(async function init(){initializeV27ModuleAccordions();refreshInstallUi();setAppUpdateUi('idle');updateNetwork();try{await openDb();const legacy=await recoverLegacyDatabases(),count=(await idbAll(STORE_CASES)).length;console.info(`V27.3.9: IndexedDB activa; ${count} expediente(s) conservado(s).`,legacy);if(legacy.casesRecovered||legacy.casesMerged)toast(`Recuperación de versiones anteriores: ${legacy.casesRecovered} trámite(s) recuperado(s) y ${legacy.casesMerged} combinado(s) sin borrar las bases originales.`);await renderRecoveryPanel('baseRecoveryPanel');await renderRecoveryPanel('managementRecoveryPanel')}catch(e){storageMode='memory';console.error('IndexedDB no disponible:',e);setTimeout(()=>toast('ADVERTENCIA: almacenamiento local no disponible. No cierre ni actualice hasta restaurarlo.'),500)}state.current=blankCase();renderAll();await renderCaseList();showView(location.hash.slice(1)||'database',false);})();
++(async function init(){initializeV27ModuleAccordions();refreshInstallUi();setAppUpdateUi('idle');updateNetwork();try{await openDb();const legacy=await recoverLegacyDatabases(),consolidation=await consolidateHistoricalFolioDuplicates(),count=(await idbAll(STORE_CASES)).length;console.info(`V27.3.9: IndexedDB activa; ${count} expediente(s) conservado(s).`,legacy,consolidation);if(legacy.casesRecovered||legacy.casesMerged)toast(`Recuperación de versiones anteriores: ${legacy.casesRecovered} trámite(s) recuperado(s) y ${legacy.casesMerged} combinado(s) sin borrar las bases originales.`);if(consolidation.removed)toast(`Integridad por Folio: ${consolidation.removed} duplicado(s) histórico(s) consolidado(s) con respaldo recuperable.`);await renderRecoveryPanel('baseRecoveryPanel');await renderRecoveryPanel('managementRecoveryPanel')}catch(e){storageMode='memory';console.error('IndexedDB no disponible:',e);setTimeout(()=>toast('ADVERTENCIA: almacenamiento local no disponible. No cierre ni actualice hasta restaurarlo.'),500)}state.current=blankCase();renderAll();await renderCaseList();showView(location.hash.slice(1)||'database',false);})();
+ 
+ </script>
+ </body>
+--- a/Fiscalizacion_BI_V27_FINAL.html
++++ b/Fiscalizacion_BI_V27_FINAL.html
+@@ -593,6 +593,8 @@
+           <button class="btn compact-control" id="excelTemplateBtn">Plantilla Excel</button>
+           <label class="btn primary compact-control" style="display:inline-block">Importar PDF<input id="pdfAutoImport" type="file" accept="application/pdf,.pdf" multiple hidden></label>
+           <button class="btn compact-control" id="expedientePackageExportBtn">Exportar paquete</button>
++          <button class="btn compact-control" id="globalJsonExportBtn">Descargar JSON completo</button>
++          <button class="btn compact-control" id="globalZipExportBtn">Descargar ZIP completo</button>
+           <label class="btn compact-control" style="display:inline-block">Cargar JSON / ZIP<input id="expedientePackageImport" type="file" accept=".zip,.json,application/zip,application/json" hidden></label>
+         </div>
+         <div class="tramites-statuses">
+@@ -1516,6 +1518,33 @@
+   if(result.casesRecovered||result.casesMerged)console.info('legacy-recovery',result);
+   return result;
+ }
++async function consolidateHistoricalFolioDuplicates(){
++  const all=(await idbAll(STORE_CASES)).map(normalizeCase),plan=L26IntegrityCore.planFolioConsolidation(all),result={groups:0,removed:0,photosRelinked:0,documentsRelinked:0,documentsDeduped:0,errors:[]};
++  if(!plan.groups.length)return result;
++  const byId=new Map(all.map(c=>[String(c.id),c]));
++  for(const group of plan.groups){
++    try{
++      let survivor=byId.get(String(group.survivorId));if(!survivor)continue;
++      const duplicates=group.duplicateIds.map(id=>byId.get(String(id))).filter(Boolean),reason=`Consolidación automática por Folio ${group.folio}`;
++      for(const record of [survivor,...duplicates])await backupCaseToRecovery(record,reason);
++      let merged=structuredClone(survivor);
++      for(const duplicate of duplicates)merged=L26IntegrityCore.mergeFolioDuplicateData(merged,duplicate);
++      const now=new Date().toISOString();
++      merged.id=survivor.id;merged.updatedAt=now;merged.version=APP_VERSION;
++      merged.integrityMigration={...(merged.integrityMigration||{}),type:'folio-consolidation',folio:group.folio,consolidatedAt:now,survivorId:survivor.id,mergedCaseIds:duplicates.map(c=>c.id),mergedTransactions:[...new Set([survivor,...duplicates].map(c=>String(c.general?.tramite||'').trim()).filter(Boolean))]};
++      merged.syncMeta={...(merged.syncMeta||{}),status:'pending',lastError:'',nextRetryAt:''};
++      merged=normalizeCase(merged);await idbPut(STORE_CASES,merged);
++      const duplicateIds=new Set(duplicates.map(c=>String(c.id)));
++      for(const photo of await idbAll(STORE_PHOTOS))if(duplicateIds.has(String(photo.caseId))){await idbPut(STORE_PHOTOS,{...photo,caseId:survivor.id});result.photosRelinked++}
++      const survivorDocs=await documentsForCase(survivor.id),docKeys=new Set(survivorDocs.map(d=>String(d.sha256||d.documentKey||'')).filter(Boolean));
++      for(const doc of await idbAll(STORE_DOCUMENTS))if(duplicateIds.has(String(doc.caseId))){const key=String(doc.sha256||doc.documentKey||'');if(key&&docKeys.has(key)){await idbDelete(STORE_DOCUMENTS,doc.id);result.documentsDeduped++;continue}await idbPut(STORE_DOCUMENTS,{...doc,caseId:survivor.id});if(key)docKeys.add(key);result.documentsRelinked++}
++      for(const duplicate of duplicates){await idbDelete(STORE_CASES,duplicate.id);byId.delete(String(duplicate.id));result.removed++}
++      byId.set(String(survivor.id),merged);await relinkCaseDocuments(merged);result.groups++;
++    }catch(error){result.errors.push(`${group.folio}: ${error?.message||error}`);console.error('Consolidación por Folio falló',group,error)}
++  }
++  if(result.groups)console.info('Consolidación física por Folio completada',result);
++  return result;
++}
+ async function photosForCase(caseId){const all=await idbAll(STORE_PHOTOS);return all.filter(p=>p.caseId===caseId)}
+ async function documentsForCase(caseId){const all=await idbAll(STORE_DOCUMENTS);return all.filter(d=>d.caseId===caseId).sort((a,b)=>String(b.uploadedAt||'').localeCompare(String(a.uploadedAt||'')))}
+ function normalizeDocumentPart(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'').trim()}
+@@ -2673,6 +2702,55 @@
+ }
+ function dataUrlToBytes(dataUrl){const m=String(dataUrl||'').match(/^data:([^;,]+)?(;base64)?,(.*)$/s);if(!m)throw new Error('Adjunto codificado no válido');if(m[2]){const bin=atob(m[3]);const out=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);return{mime:m[1]||'application/octet-stream',bytes:out}}return{mime:m[1]||'text/plain;charset=utf-8',bytes:new TextEncoder().encode(decodeURIComponent(m[3]))}}
+ function bytesToBase64(bytes){const view=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes),chunk=0x8000,parts=[];for(let i=0;i<view.length;i+=chunk)parts.push(String.fromCharCode(...view.subarray(i,i+chunk)));return btoa(parts.join(''))}
++async function serializeAttachmentForJson(record){const copy={...(record||{})};if(copy.blob){copy.blobData=await blobToDataUrl(copy.blob);delete copy.blob}else if(copy.blobData)copy.blobData=String(copy.blobData);return copy}
++async function serializeRecoveryPhotoForJson(record){const copy=structuredClone(record||{});if(copy.photo)copy.photo=await serializeAttachmentForJson(copy.photo);return copy}
++async function serializeRecoveryDocumentForJson(record){const copy=structuredClone(record||{});if(copy.document)copy.document=await serializeAttachmentForJson(copy.document);return copy}
++async function buildGlobalJsonBackup(){
++  const [cases,photos,documents,recoveryCases,recoveryPhotos,recoveryDocuments]=await Promise.all([idbAll(STORE_CASES),idbAll(STORE_PHOTOS),idbAll(STORE_DOCUMENTS),idbAll(STORE_RECOVERY_CASES),idbAll(STORE_RECOVERY_PHOTOS),idbAll(STORE_RECOVERY_DOCUMENTS)]),photoData=[],documentData=[],recoveryPhotoData=[],recoveryDocumentData=[];
++  for(const p of photos)photoData.push(await serializeAttachmentForJson(p));
++  for(const d of documents)documentData.push(await serializeAttachmentForJson(d));
++  for(const p of recoveryPhotos)recoveryPhotoData.push(await serializeRecoveryPhotoForJson(p));
++  for(const d of recoveryDocuments)recoveryDocumentData.push(await serializeRecoveryDocumentForJson(d));
++  return L26IntegrityCore.buildGlobalBackupEnvelope({appVersion:APP_VERSION,dbVersion:DB_VERSION,exportedAt:new Date().toISOString(),cases:cases.map(normalizeCase),photos:photoData,documents:documentData,recovery:{cases:recoveryCases,photos:recoveryPhotoData,documents:recoveryDocumentData},metadata:{database:DB_NAME,storageMode,deviceLocal:true,note:'Respaldo completo no destructivo de Fiscalización L-26'}});
++}
++async function exportGlobalJsonBackup(){const payload=await buildGlobalJsonBackup(),date=payload.exportedAt.slice(0,10);downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`Fiscalizacion_L26_Respaldo_Completo_${date}.json`);toast(`JSON completo descargado: ${payload.counts.cases} trámite(s), ${payload.counts.photos} foto(s) y ${payload.counts.documents} documento(s).`);return payload}
++async function exportGlobalZipBackup(){const payload=await buildGlobalJsonBackup(),date=payload.exportedAt.slice(0,10),manifest={schema:'FiscalizacionBIGlobalZip',schemaVersion:1,appVersion:APP_VERSION,exportedAt:payload.exportedAt,contains:'respaldo_completo.json',counts:payload.counts},bytes=zipStore([{name:'manifest.json',data:JSON.stringify(manifest,null,2)},{name:'respaldo_completo.json',data:JSON.stringify(payload,null,2)}]);downloadBlob(new Blob([bytes],{type:'application/zip'}),`Fiscalizacion_L26_Respaldo_Completo_${date}.zip`);toast(`ZIP completo descargado: ${payload.counts.cases} trámite(s) con toda la información local.`);return payload}
++async function restoreGlobalBackupAttachments(attachments,idMap){
++  const data=attachments&&typeof attachments==='object'?attachments:{},result={photos:0,documents:0,skipped:0},allPhotos=await idbAll(STORE_PHOTOS),allDocuments=await idbAll(STORE_DOCUMENTS),photoById=new Map(allPhotos.map(x=>[String(x.id||''),x]).filter(([id])=>id)),documentById=new Map(allDocuments.map(x=>[String(x.id||''),x]).filter(([id])=>id)),photoIds=new Set(photoById.keys()),documentIds=new Set(documentById.keys());
++  const freshId=(used)=>{let id=uid();while(used.has(String(id)))id=uid();return id};
++  for(const meta of data.photos||[]){
++    if(!meta||typeof meta!=='object')continue;
++    const target=idMap.get(String(meta.caseId||''))||meta.caseId;if(!target||!await idbGet(STORE_CASES,target)){result.skipped++;continue}
++    const collision=meta.id?photoById.get(String(meta.id)):null,existing=collision&&String(collision.caseId)===String(target)?collision:null;
++    let id=existing?.id||meta.id||freshId(photoIds);if(!existing&&photoIds.has(String(id)))id=freshId(photoIds);
++    const copy={...meta,...(existing||{}),id,caseId:target};if(!copy.blob&&copy.blobData){copy.blob=await(await fetch(copy.blobData)).blob()}delete copy.blobData;await idbPut(STORE_PHOTOS,copy);photoIds.add(String(id));photoById.set(String(id),copy);result.photos++;
++  }
++  for(const meta of data.documents||[]){
++    if(!meta||typeof meta!=='object')continue;
++    const target=idMap.get(String(meta.caseId||''))||meta.caseId;if(!target||!await idbGet(STORE_CASES,target)){result.skipped++;continue}
++    const existing=await documentsForCase(target),match=existing.find(x=>(meta.id&&x.id===meta.id)||(meta.documentKey&&x.documentKey===meta.documentKey)||(meta.sha256&&x.sha256===meta.sha256));
++    let id=match?.id||meta.id||freshId(documentIds);if(!match&&documentIds.has(String(id)))id=freshId(documentIds);
++    const copy={...meta,...(match||{}),id,caseId:target};if(!copy.blob&&copy.blobData){copy.blob=await(await fetch(copy.blobData)).blob()}delete copy.blobData;await idbPut(STORE_DOCUMENTS,copy);documentIds.add(String(id));documentById.set(String(id),copy);result.documents++;
++  }
++  return result;
++}
++async function restoreGlobalBackupRecovery(recovery,idMap=new Map()){
++  const data=recovery&&typeof recovery==='object'?recovery:{},result={cases:0,photos:0,documents:0,duplicates:0},caseArchive=await idbAll(STORE_RECOVERY_CASES),photoArchive=await idbAll(STORE_RECOVERY_PHOTOS),documentArchive=await idbAll(STORE_RECOVERY_DOCUMENTS),caseIds=new Set(caseArchive.map(x=>String(x.recoveryId||'')).filter(Boolean)),photoIds=new Set(photoArchive.map(x=>String(x.recoveryId||'')).filter(Boolean)),documentIds=new Set(documentArchive.map(x=>String(x.recoveryId||'')).filter(Boolean));
++  const mapCaseId=value=>idMap.get(String(value||''))||value;
++  const freshRecoveryId=(prefix,used)=>{let id=`${prefix}-${uid()}`;while(used.has(String(id)))id=`${prefix}-${uid()}`;return id};
++  for(const raw of data.cases||[]){if(!raw||typeof raw!=='object')continue;const copy=structuredClone(raw),sourceCaseId=copy.caseId||copy.case?.id||'',target=mapCaseId(sourceCaseId);copy.caseId=target;const duplicate=caseArchive.some(x=>String(x.snapshotId||'')===String(copy.snapshotId||'')&&String(x.caseId||'')===String(target)&&String(x.case?.id||'')===String(copy.case?.id||''));if(duplicate){result.duplicates++;continue}if(!copy.recoveryId||caseIds.has(String(copy.recoveryId)))copy.recoveryId=freshRecoveryId('global-recovery-case',caseIds);await idbPut(STORE_RECOVERY_CASES,copy);caseIds.add(String(copy.recoveryId));caseArchive.push(copy);result.cases++}
++  for(const raw of data.photos||[]){if(!raw||typeof raw!=='object')continue;const copy=structuredClone(raw),sourceCaseId=copy.caseId||copy.photo?.caseId||'',target=mapCaseId(sourceCaseId);copy.caseId=target;const duplicate=photoArchive.some(x=>String(x.snapshotId||'')===String(copy.snapshotId||'')&&String(x.caseId||'')===String(target)&&String(x.photo?.id||'')===String(copy.photo?.id||''));if(duplicate){result.duplicates++;continue}if(!copy.recoveryId||photoIds.has(String(copy.recoveryId)))copy.recoveryId=freshRecoveryId('global-recovery-photo',photoIds);if(copy.photo?.blobData){copy.photo.blob=await(await fetch(copy.photo.blobData)).blob();delete copy.photo.blobData}await idbPut(STORE_RECOVERY_PHOTOS,copy);photoIds.add(String(copy.recoveryId));photoArchive.push(copy);result.photos++}
++  for(const raw of data.documents||[]){if(!raw||typeof raw!=='object')continue;const copy=structuredClone(raw),sourceCaseId=copy.caseId||copy.document?.caseId||'',target=mapCaseId(sourceCaseId);copy.caseId=target;const duplicate=documentArchive.some(x=>String(x.snapshotId||'')===String(copy.snapshotId||'')&&String(x.caseId||'')===String(target)&&String(x.document?.id||'')===String(copy.document?.id||''));if(duplicate){result.duplicates++;continue}if(!copy.recoveryId||documentIds.has(String(copy.recoveryId)))copy.recoveryId=freshRecoveryId('global-recovery-doc',documentIds);if(copy.document?.blobData){copy.document.blob=await(await fetch(copy.document.blobData)).blob();delete copy.document.blobData}await idbPut(STORE_RECOVERY_DOCUMENTS,copy);documentIds.add(String(copy.recoveryId));documentArchive.push(copy);result.documents++}
++  return result;
++}
++async function importGlobalBackupPayload(data){
++  if(data?.schema!=='FiscalizacionBIGlobalExport')throw new Error('El JSON no corresponde a un respaldo global de Fiscalización L-26.');
++  const incoming=Array.isArray(data.cases)?data.cases:[];if(!incoming.length)throw new Error('El respaldo global no contiene trámites.');
++  if(!confirm(`Se combinarán ${incoming.length} trámite(s) del respaldo completo. No se borrarán datos actuales. ¿Continuar?`))throw new Error('Importación cancelada por el usuario.');
++  const imported=await importJsonCases(incoming),attachments=await restoreGlobalBackupAttachments(data.attachments,imported.idMap),recovery=await restoreGlobalBackupRecovery(data.recovery,imported.idMap),consolidation=await consolidateHistoricalFolioDuplicates();
++  await renderCaseList();showView('database');toast(`Respaldo completo cargado: ${imported.created} nuevo(s), ${imported.updated} actualizado(s), ${attachments.photos} foto(s), ${attachments.documents} documento(s).`);return{...imported,attachments,recovery,consolidation};
++}
++
+ async function exportCasePackage(c=state.current){
+   const payload=await buildJsonPackage(c),files=[{name:'expediente.json',data:JSON.stringify(payload,null,2)}];
+   for(const p of payload.attachments.photos||[]){if(!p.blobData)continue;const a=dataUrlToBytes(p.blobData),ext=(a.mime.split('/')[1]||'bin').split('+')[0];files.push({name:`fotografias/${safeName({general:{tramite:c.general?.tramite||'expediente'}})}_${p.id||uid()}.${ext}`,data:a.bytes})}
+@@ -2858,6 +2936,7 @@
+   if(!file)throw new Error('Seleccione un archivo ZIP o JSON.');
+   if(/\.json$/i.test(file.name)){
+     let data;try{data=JSON.parse(await file.text())}catch(error){throw new Error(`El JSON no es válido: ${error.message}`)}
++    if(data?.schema==='FiscalizacionBIGlobalExport')return importGlobalBackupPayload(data);
+     if(data?.schema==='FiscalizacionBIExport'&&data.case){
+       const known=(await idbAll(STORE_CASES)).map(normalizeCase),sourceId=String(data.case.id||''),result=await saveImportedCaseWithoutDuplicates(data.case,known),record=result.record;
+       for(const p of data.attachments?.photos||[]){const copy={...p,caseId:record.id};if(copy.blobData){copy.blob=await(await fetch(copy.blobData)).blob();delete copy.blobData}await idbPut(STORE_PHOTOS,copy)}
+@@ -2870,6 +2949,7 @@
+   }
+   if(!/\.zip$/i.test(file.name))throw new Error('Seleccione un archivo .zip o .json de expediente.');
+   const files=await unzipArchive(await file.arrayBuffer()),decoder=new TextDecoder();
++  const globalBackupName=findArchiveEntry(files,'respaldo_completo.json');if(globalBackupName){const data=JSON.parse(decoder.decode(files[globalBackupName]));if(data?.schema==='FiscalizacionBIGlobalExport')return importGlobalBackupPayload(data)}
+   const expedienteName=findArchiveEntry(files,'expediente.json'),expedientesName=findArchiveEntry(files,'expedientes.json'),adjuntosName=findArchiveEntry(files,'adjuntos.json');
+   /* Respaldo completo de Gestión, incluso de versiones anteriores: puede cargarse desde Trámites. */
+   if(expedientesName){
+@@ -2945,6 +3025,8 @@
+ function bindPackageControls(){
+   const bind=(id,handler)=>{const el=$(id);if(!el)return;el.addEventListener('click',async()=>{try{await handler()}catch(err){console.error(err);toast(`Operación falló: ${err.message}`)}})};
+   bind('#expedientePackageExportBtn',()=>exportCasePackage(state.current));
++  bind('#globalJsonExportBtn',()=>exportGlobalJsonBackup());
++  bind('#globalZipExportBtn',()=>exportGlobalZipBackup());
+   bind('#reportPackageExportBtn',()=>exportCasePackage(state.current));
+   bind('#managementPackageExportBtn',()=>exportManagementPackage());
+   [['#expedientePackageImport'],['#reportPackageImport']].forEach(([id])=>$(id)?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{await importCasePackage(f)}catch(err){console.error(err);toast(`Importación falló: ${err.message}`)}finally{e.target.value=''}}));
+@@ -3283,7 +3365,7 @@
+ 
+ $('#baseRecoveryBtn')?.addEventListener('click',async()=>{const p=$('#baseRecoveryPanel');if(!p)return;p.hidden=!p.hidden;if(!p.hidden)await renderRecoveryPanel('baseRecoveryPanel')});
+ $('#managementRecoveryBtn')?.addEventListener('click',async()=>{const p=$('#managementRecoveryPanel');if(!p)return;p.hidden=!p.hidden;if(!p.hidden)await renderRecoveryPanel('managementRecoveryPanel')});
+-(async function init(){initializeV27ModuleAccordions();refreshInstallUi();setAppUpdateUi('idle');updateNetwork();try{await openDb();const legacy=await recoverLegacyDatabases(),count=(await idbAll(STORE_CASES)).length;console.info(`V27.3.9: IndexedDB activa; ${count} expediente(s) conservado(s).`,legacy);if(legacy.casesRecovered||legacy.casesMerged)toast(`Recuperación de versiones anteriores: ${legacy.casesRecovered} trámite(s) recuperado(s) y ${legacy.casesMerged} combinado(s) sin borrar las bases originales.`);await renderRecoveryPanel('baseRecoveryPanel');await renderRecoveryPanel('managementRecoveryPanel')}catch(e){storageMode='memory';console.error('IndexedDB no disponible:',e);setTimeout(()=>toast('ADVERTENCIA: almacenamiento local no disponible. No cierre ni actualice hasta restaurarlo.'),500)}state.current=blankCase();renderAll();await renderCaseList();showView(location.hash.slice(1)||'database',false);})();
++(async function init(){initializeV27ModuleAccordions();refreshInstallUi();setAppUpdateUi('idle');updateNetwork();try{await openDb();const legacy=await recoverLegacyDatabases(),consolidation=await consolidateHistoricalFolioDuplicates(),count=(await idbAll(STORE_CASES)).length;console.info(`V27.3.9: IndexedDB activa; ${count} expediente(s) conservado(s).`,legacy,consolidation);if(legacy.casesRecovered||legacy.casesMerged)toast(`Recuperación de versiones anteriores: ${legacy.casesRecovered} trámite(s) recuperado(s) y ${legacy.casesMerged} combinado(s) sin borrar las bases originales.`);if(consolidation.removed)toast(`Integridad por Folio: ${consolidation.removed} duplicado(s) histórico(s) consolidado(s) con respaldo recuperable.`);await renderRecoveryPanel('baseRecoveryPanel');await renderRecoveryPanel('managementRecoveryPanel')}catch(e){storageMode='memory';console.error('IndexedDB no disponible:',e);setTimeout(()=>toast('ADVERTENCIA: almacenamiento local no disponible. No cierre ni actualice hasta restaurarlo.'),500)}state.current=blankCase();renderAll();await renderCaseList();showView(location.hash.slice(1)||'database',false);})();
+ 
+ </script>
+ </body>
+--- a/app/assets/l26_integrity_core.js
++++ b/app/assets/l26_integrity_core.js
+@@ -105,5 +105,80 @@
+     const totalIssues=duplicateIdentities.length+casesWithoutTramite.length+invalidDistricts.length+documentTramiteMismatches.length+sourceFileTramiteMismatches.length+documentNameTramiteMismatches.length;
+     return{generatedAt:new Date().toISOString(),duplicateIdentities,casesWithoutTramite,invalidDistricts,documentTramiteMismatches,sourceFileTramiteMismatches,documentNameTramiteMismatches,totalIssues};
+   }
+-  return{canonicalTramite,normalizeDistrict,caseIdentityKey,importFolioKey,findImportMatchByFolio,uniqueFolioCount,sameTramite,hasTramiteConflict,recordsMayMerge,findRecoveryCandidates,extractTramiteFromText,findDocumentCaseMatch,auditIntegrity};
++
++  const cloneValue=value=>value==null?value:(typeof structuredClone==='function'?structuredClone(value):JSON.parse(JSON.stringify(value)));
++  const isBlank=value=>value==null||(typeof value==='string'&&value.trim()==='');
++  function fillMissingDeep(base,fallback){
++    if(Array.isArray(base))return base.length?cloneValue(base):cloneValue(Array.isArray(fallback)?fallback:[]);
++    if(base&&typeof base==='object'){
++      const out=cloneValue(base);
++      for(const [key,value] of Object.entries(fallback||{})){
++        if(isBlank(out[key]))out[key]=cloneValue(value);
++        else if(out[key]&&typeof out[key]==='object'&&!Array.isArray(out[key])&&value&&typeof value==='object'&&!Array.isArray(value))out[key]=fillMissingDeep(out[key],value);
++      }
++      return out;
++    }
++    return isBlank(base)?cloneValue(fallback):base;
++  }
++  function mergeUniqueArray(primary,secondary){
++    const out=[],index=new Map();
++    for(const item of [...(Array.isArray(primary)?primary:[]),...(Array.isArray(secondary)?secondary:[])]){
++      const objectKey=item&&typeof item==='object'?(item.id||item.recoveryId||item.documentKey||item.sha256||''):'';
++      const key=objectKey||`V:${typeof item==='object'?JSON.stringify(item):String(item)}`;
++      if(index.has(key)){
++        const at=index.get(key);if(objectKey&&item&&typeof item==='object'&&out[at]&&typeof out[at]==='object')out[at]=fillMissingDeep(out[at],item);
++        continue;
++      }
++      index.set(key,out.length);out.push(cloneValue(item));
++    }
++    return out;
++  }
++  function recordStatusRank(record){const status=String(record?.status||'');if(status==='Enviado')return 4;if(status==='Finalizado'||record?.workflow?.stage==='completed')return 3;if(status==='En proceso'||record?.workflow?.stage==='resolution')return 2;return 1}
++  function recordTimestamp(record){const raw=record?.updatedAt||record?.completedAt||record?.createdAt||'';const value=Date.parse(raw);return Number.isFinite(value)?value:0}
++  function planFolioConsolidation(records){
++    const list=Array.isArray(records)?records:[],groupsByFolio=new Map(),untouched=[];
++    for(const record of list){const folio=importFolioKey(record);if(!folio){untouched.push(record);continue}if(!groupsByFolio.has(folio))groupsByFolio.set(folio,[]);groupsByFolio.get(folio).push(record)}
++    const groups=[];
++    for(const [folio,items] of groupsByFolio){
++      if(items.length<2){untouched.push(items[0]);continue}
++      const ordered=[...items].sort((a,b)=>recordStatusRank(b)-recordStatusRank(a)||recordTimestamp(b)-recordTimestamp(a)||String(a?.id||'').localeCompare(String(b?.id||'')));
++      groups.push({folio,survivorId:String(ordered[0]?.id||''),duplicateIds:ordered.slice(1).map(item=>String(item?.id||'')),records:ordered});
++    }
++    return{groups,untouched,totalDuplicates:groups.reduce((sum,g)=>sum+g.duplicateIds.length,0)};
++  }
++  function mergeFolioDuplicateData(primary,duplicate){
++    const left=cloneValue(primary||{}),right=cloneValue(duplicate||{}),merged=fillMissingDeep(left,right);
++    merged.id=left.id||right.id;
++    merged.general=fillMissingDeep(left.general||{},right.general||{});
++    merged.visit=fillMissingDeep(left.visit||{},right.visit||{});
++    merged.location=fillMissingDeep(left.location||{},right.location||{});
++    merged.terrain=fillMissingDeep(left.terrain||{},right.terrain||{});
++    merged.road=fillMissingDeep(left.road||{},right.road||{});
++    merged.management=fillMissingDeep(left.management||{},right.management||{});
++    merged.localBase=fillMissingDeep(left.localBase||{},right.localBase||{});
++    merged.syncMeta=fillMissingDeep(left.syncMeta||{},right.syncMeta||{});
++    merged.workflow=fillMissingDeep(left.workflow||{},right.workflow||{});
++    if(recordStatusRank(right)>recordStatusRank(left)){merged.status=right.status;merged.workflow.stage=right.workflow?.stage||merged.workflow.stage;merged.completedAt=right.completedAt||merged.completedAt;merged.completedBy=right.completedBy||merged.completedBy}
++    merged.workflow.history=mergeUniqueArray(left.workflow?.history,right.workflow?.history);
++    merged.workflow.pendingItems=mergeUniqueArray(left.workflow?.pendingItems,right.workflow?.pendingItems);
++    merged.repositoryAudit=fillMissingDeep(left.repositoryAudit||{},right.repositoryAudit||{});
++    merged.repositoryAudit.items=mergeUniqueArray(left.repositoryAudit?.items,right.repositoryAudit?.items);
++    merged.report=fillMissingDeep(left.report||{},right.report||{});
++    merged.report.rectification=fillMissingDeep(left.report?.rectification||{},right.report?.rectification||{});
++    merged.report.rectification.history=mergeUniqueArray(left.report?.rectification?.history,right.report?.rectification?.history);
++    merged.report.valuationAnnex=fillMissingDeep(left.report?.valuationAnnex||{},right.report?.valuationAnnex||{});
++    for(const key of ['terrainPhotos','constructionPhotos','agroPhotos'])merged.report.valuationAnnex[key]=mergeUniqueArray(left.report?.valuationAnnex?.[key],right.report?.valuationAnnex?.[key]);
++    merged.constructions=mergeUniqueArray(left.constructions,right.constructions);
++    merged.photos=mergeUniqueArray(left.photos,right.photos);
++    merged.rights=[...new Set([...(left.rights||[]),...(right.rights||[])].map(v=>String(v||'').trim()).filter(Boolean))];
++    const newest=Math.max(recordTimestamp(left),recordTimestamp(right));if(newest)merged.updatedAt=new Date(newest).toISOString();
++    return merged;
++  }
++  function buildGlobalBackupEnvelope(input={}){
++    const cases=cloneValue(input.cases||[]),photos=cloneValue(input.photos||[]),documents=cloneValue(input.documents||[]),recovery=input.recovery||{},managementCaseIds=cases.filter(c=>c?.workflow?.stage==='completed'||['Finalizado','Enviado'].includes(String(c?.status||''))).map(c=>c.id);
++    const recoveryCases=cloneValue(recovery.cases||[]),recoveryPhotos=cloneValue(recovery.photos||[]),recoveryDocuments=cloneValue(recovery.documents||[]);
++    return{schema:'FiscalizacionBIGlobalExport',schemaVersion:1,appVersion:String(input.appVersion||''),dbVersion:Number(input.dbVersion||0),exportedAt:input.exportedAt||new Date().toISOString(),format:'JSON+base64',counts:{cases:cases.length,management:managementCaseIds.length,photos:photos.length,documents:documents.length,recoveryCases:recoveryCases.length,recoveryPhotos:recoveryPhotos.length,recoveryDocuments:recoveryDocuments.length},cases,management:{caseIds:managementCaseIds},attachments:{photos,documents},recovery:{cases:recoveryCases,photos:recoveryPhotos,documents:recoveryDocuments},metadata:cloneValue(input.metadata||{})};
++  }
++
++  return{canonicalTramite,normalizeDistrict,caseIdentityKey,importFolioKey,findImportMatchByFolio,uniqueFolioCount,sameTramite,hasTramiteConflict,recordsMayMerge,findRecoveryCandidates,extractTramiteFromText,findDocumentCaseMatch,auditIntegrity,planFolioConsolidation,mergeFolioDuplicateData,buildGlobalBackupEnvelope};
+ });
+--- a/sw.js
++++ b/sw.js
+@@ -1,4 +1,4 @@
+-const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1-conformidad-v1-windows-desktop-launch-v1-desktop-bridge-fallback-v2-pdf-compat-v1-compact-districts-v1-android-offline-pdf-ocr-v1-rebuild-reader-v2-metro-protocol-handoff-v1-folio-dedupe-posesoria-v1-release-27.3.9';
++const CACHE='fiscalizacion-bi-l26-manual-20260829-croquis-proportional-v1-year-filter-v1-integridad-recuperacion-v1-internal-web-reader-v1-requested-updates-v1-conformidad-v1-windows-desktop-launch-v1-desktop-bridge-fallback-v2-pdf-compat-v1-compact-districts-v1-android-offline-pdf-ocr-v1-rebuild-reader-v2-metro-protocol-handoff-v1-folio-dedupe-posesoria-v1-global-backup-historical-consolidation-v1-release-27.3.9';
+ const CORE=['./','./index.html','./app/index.html','./app/assets/import_rules.js','./app/assets/l26_integrity_core.js','./app/assets/l26_management_core.js','./app/assets/l26_territory_core.js','./app/assets/l26_reader_apply_core.js','./app/assets/l26_excel_import_core.js','./app/assets/l26_croquis_core.js','./app/assets/l26_filter_core.js','./app/assets/l26_pdf_reader.js','./manifest.webmanifest','./favicon-48.png','./apple-touch-icon.png','./icon-192.png','./icon-512.png','./icon-maskable-192.png','./icon-maskable-512.png'];
+ const PDFJS_CACHE='l26-pdfjs-4.10.38-legacy-v2';
+ const PDFJS_ASSETS=['./app/assets/vendor/pdfjs-4.10.38-legacy/pdf.min.mjs','./app/assets/vendor/pdfjs-4.10.38-legacy/pdf.worker.min.mjs'];
+--- a/scripts/verify_packaged_runtime.py
++++ b/scripts/verify_packaged_runtime.py
+@@ -0,0 +1,149 @@
++#!/usr/bin/env python3
++"""Verify that packaged Windows/Android artifacts contain the L-26 runtime needed offline."""
++from __future__ import annotations
++
++from pathlib import Path
++import argparse
++import json
++import zipfile
++
++PDF_VENDOR = Path('app/assets/vendor/pdfjs-4.10.38-legacy')
++HTML_MARKERS = (
++    'globalJsonExportBtn',
++    'consolidateHistoricalFolioDuplicates',
++    'l26-reader://',
++)
++
++
++def _result(**kwargs):
++    errors = kwargs.pop('errors', [])
++    return {'ok': not errors, 'errors': errors, **kwargs}
++
++
++def _find_windows_unpacked(path: Path) -> Path | None:
++    path = path.resolve()
++    if (path / 'resources').is_dir():
++        return path
++    direct = path / 'win-unpacked'
++    if direct.is_dir():
++        return direct
++    matches = sorted(p for p in path.rglob('win-unpacked') if (p / 'resources').is_dir())
++    return matches[0] if matches else None
++
++
++def _check_runtime_tree(runtime_root: Path) -> list[str]:
++    errors: list[str] = []
++    required_files = [
++        Path('index.html'),
++        Path('sw.js'),
++        Path('app/assets/l26_integrity_core.js'),
++        PDF_VENDOR / 'pdf.min.mjs',
++        PDF_VENDOR / 'pdf.worker.min.mjs',
++    ]
++    for rel in required_files:
++        path = runtime_root / rel
++        if not path.is_file():
++            errors.append(f'Falta archivo empaquetado: {rel.as_posix()}')
++    for rel_dir in (PDF_VENDOR / 'cmaps', PDF_VENDOR / 'standard_fonts'):
++        path = runtime_root / rel_dir
++        if not path.is_dir() or not any(p.is_file() for p in path.rglob('*')):
++            errors.append(f'Falta directorio PDF offline con contenido: {rel_dir.as_posix()}')
++    pdf = runtime_root / PDF_VENDOR / 'pdf.min.mjs'
++    if pdf.is_file() and pdf.stat().st_size < 100_000:
++        errors.append('pdf.min.mjs empaquetado es anormalmente pequeño')
++    worker = runtime_root / PDF_VENDOR / 'pdf.worker.min.mjs'
++    if worker.is_file() and worker.stat().st_size < 500_000:
++        errors.append('pdf.worker.min.mjs empaquetado es anormalmente pequeño')
++    index = runtime_root / 'index.html'
++    if index.is_file():
++        text = index.read_text(encoding='utf-8', errors='replace')
++        for marker in HTML_MARKERS:
++            if marker not in text:
++                errors.append(f'Falta marcador funcional en index.html empaquetado: {marker}')
++    return errors
++
++
++def verify_windows(dist_path: str | Path) -> dict:
++    dist = Path(dist_path)
++    errors: list[str] = []
++    unpacked = _find_windows_unpacked(dist)
++    if unpacked is None:
++        return _result(errors=['No se encontró win-unpacked/resources en el build Windows.'], windows=str(dist))
++    resources = unpacked / 'resources'
++    asar = resources / 'app.asar'
++    if not asar.is_file() or asar.stat().st_size < 1024:
++        errors.append('Falta resources/app.asar o es anormalmente pequeño.')
++    else:
++        asar_bytes=asar.read_bytes()
++        for marker in (b'l26-reader', b'reader-preload.js'):
++            if marker not in asar_bytes:
++                errors.append(f'Falta marcador Electron dentro de app.asar: {marker.decode()}')
++    runtime_root = resources / 'app'
++    if not runtime_root.is_dir():
++        errors.append('Falta resources/app: extraResources no incluyó la aplicación L-26.')
++    else:
++        errors.extend(_check_runtime_tree(runtime_root))
++    return _result(
++        errors=errors,
++        windows=str(dist),
++        unpacked=str(unpacked),
++        runtime_root=str(runtime_root),
++    )
++
++
++def _zip_has_prefixed_file(names: set[str], prefix: str) -> bool:
++    return any(name.startswith(prefix) and not name.endswith('/') for name in names)
++
++
++def verify_android(apk_path: str | Path) -> dict:
++    apk = Path(apk_path)
++    errors: list[str] = []
++    if not apk.is_file():
++        return _result(errors=[f'APK no encontrado: {apk}'], apk=str(apk))
++    try:
++        with zipfile.ZipFile(apk) as zf:
++            bad = zf.testzip()
++            if bad:
++                errors.append(f'APK ZIP corrupto en: {bad}')
++            names = set(zf.namelist())
++            root = 'assets/www/'
++            vendor = root + PDF_VENDOR.as_posix() + '/'
++            required = [
++                root + 'index.html',
++                root + 'app/assets/l26_integrity_core.js',
++                vendor + 'pdf.min.mjs',
++                vendor + 'pdf.worker.min.mjs',
++            ]
++            for name in required:
++                if name not in names:
++                    errors.append(f'Falta archivo dentro del APK: {name}')
++            if not _zip_has_prefixed_file(names, vendor + 'cmaps/'):
++                errors.append(f'Faltan cmaps PDF offline dentro del APK: {vendor}cmaps/')
++            if not _zip_has_prefixed_file(names, vendor + 'standard_fonts/'):
++                errors.append(f'Faltan standard_fonts PDF offline dentro del APK: {vendor}standard_fonts/')
++            if root + 'index.html' in names:
++                text = zf.read(root + 'index.html').decode('utf-8', errors='replace')
++                for marker in HTML_MARKERS:
++                    if marker not in text:
++                        errors.append(f'Falta marcador funcional en index.html del APK: {marker}')
++            for name, minimum in ((vendor + 'pdf.min.mjs', 100_000), (vendor + 'pdf.worker.min.mjs', 500_000)):
++                if name in names and zf.getinfo(name).file_size < minimum:
++                    errors.append(f'{name} dentro del APK es anormalmente pequeño')
++    except zipfile.BadZipFile as exc:
++        errors.append(f'APK no es un ZIP válido: {exc}')
++    return _result(errors=errors, apk=str(apk))
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    group = parser.add_mutually_exclusive_group(required=True)
++    group.add_argument('--windows', help='desktop/dist o ruta a win-unpacked')
++    group.add_argument('--android', help='ruta al APK generado')
++    args = parser.parse_args()
++    report = verify_windows(args.windows) if args.windows else verify_android(args.android)
++    print(json.dumps(report, ensure_ascii=False, indent=2))
++    raise SystemExit(0 if report['ok'] else 2)
++
++
++if __name__ == '__main__':
++    main()
+--- a/tests/l26_audit_corrections_core.test.js
++++ b/tests/l26_audit_corrections_core.test.js
+@@ -0,0 +1,61 @@
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const core=require('../app/assets/l26_integrity_core.js');
++
++test('planifica consolidación histórica por folio y conserva casos posesorios sin folio separados',()=>{
++  assert.equal(typeof core.planFolioConsolidation,'function');
++  const records=[
++    {id:'old',status:'Asignado',updatedAt:'2026-08-20T10:00:00Z',general:{tramite:'T-A',folio:'275480',finca:'275480',owner:'Persona A'}},
++    {id:'new',status:'Finalizado',workflow:{stage:'completed'},updatedAt:'2026-08-21T10:00:00Z',general:{tramite:'T-B',folio:'275480',finca:'275480',ownerId:'0102030405'}},
++    {id:'pos-1',general:{tramite:'P-1',folio:'',finca:'',informacionPosesoria:true}},
++    {id:'pos-2',general:{tramite:'P-2',folio:'',finca:'',informacionPosesoria:true}},
++  ];
++  const plan=core.planFolioConsolidation(records);
++  assert.equal(plan.groups.length,1);
++  assert.equal(plan.groups[0].folio,'275480');
++  assert.equal(plan.groups[0].survivorId,'new');
++  assert.deepEqual(plan.groups[0].duplicateIds,['old']);
++  assert.equal(plan.untouched.length,2);
++});
++
++test('combina historias y metadatos sin perder datos de dos registros del mismo folio',()=>{
++  assert.equal(typeof core.mergeFolioDuplicateData,'function');
++  const primary={id:'new',status:'Finalizado',workflow:{stage:'completed',history:[{at:'2026-08-21',to:'completed'}]},general:{folio:'275480',finca:'275480',owner:'',ownerId:'0102'},repositoryAudit:{items:[{id:'a2'}]},report:{rectification:{history:[{id:'r2'}]}},constructions:[{id:'c2',name:'B'}],photos:[{id:'p2'}]};
++  const duplicate={id:'old',status:'Asignado',workflow:{stage:'field',history:[{at:'2026-08-20',to:'field'}]},general:{folio:'275480',finca:'275480',owner:'Persona A',ownerId:''},repositoryAudit:{items:[{id:'a1'}]},report:{rectification:{history:[{id:'r1'}]}},constructions:[{id:'c1',name:'A'}],photos:[{id:'p1'}]};
++  const merged=core.mergeFolioDuplicateData(primary,duplicate);
++  assert.equal(merged.id,'new');
++  assert.equal(merged.general.owner,'Persona A');
++  assert.equal(merged.general.ownerId,'0102');
++  assert.equal(merged.workflow.stage,'completed');
++  assert.equal(merged.workflow.history.length,2);
++  assert.equal(merged.repositoryAudit.items.length,2);
++  assert.equal(merged.report.rectification.history.length,2);
++  assert.deepEqual(merged.constructions.map(x=>x.id).sort(),['c1','c2']);
++  assert.deepEqual(merged.photos.map(x=>x.id).sort(),['p1','p2']);
++});
++
++test('respaldo global declara esquema y resume casos sin depender de UI',()=>{
++  assert.equal(typeof core.buildGlobalBackupEnvelope,'function');
++  const payload=core.buildGlobalBackupEnvelope({
++    appVersion:'27.3.9',dbVersion:6,exportedAt:'2026-08-31T20:00:00Z',
++    cases:[{id:'a',general:{folio:'1'}},{id:'b',general:{folio:'2'},workflow:{stage:'completed'}}],
++    photos:[{id:'p',caseId:'a',blobData:'data:image/jpeg;base64,AA=='}],
++    documents:[{id:'d',caseId:'b',blobData:'data:application/pdf;base64,AA=='}],
++    recovery:{cases:[{recoveryId:'r1'}],photos:[],documents:[]}
++  });
++  assert.equal(payload.schema,'FiscalizacionBIGlobalExport');
++  assert.equal(payload.counts.cases,2);
++  assert.equal(payload.counts.photos,1);
++  assert.equal(payload.counts.documents,1);
++  assert.equal(payload.counts.recoveryCases,1);
++  assert.equal(payload.attachments.photos[0].caseId,'a');
++});
++
++test('al consolidar conserva campos complementarios de una misma construcción por id',()=>{
++  const primary={id:'new',general:{folio:'9'},constructions:[{id:'c1',name:'Casa',area:'',condition:'Buena'}]};
++  const duplicate={id:'old',general:{folio:'9'},constructions:[{id:'c1',name:'Casa',area:'120',condition:''}]};
++  const merged=core.mergeFolioDuplicateData(primary,duplicate);
++  assert.equal(merged.constructions.length,1);
++  assert.equal(merged.constructions[0].area,'120');
++  assert.equal(merged.constructions[0].condition,'Buena');
++});
+--- a/tests/l26_historical_consolidation_runtime.test.js
++++ b/tests/l26_historical_consolidation_runtime.test.js
+@@ -0,0 +1,51 @@
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const fs=require('node:fs');
++const vm=require('node:vm');
++const path=require('node:path');
++const core=require('../app/assets/l26_integrity_core.js');
++
++function extractFunction(source,signature){
++  const start=source.indexOf(signature); if(start<0)throw new Error(`Missing ${signature}`);
++  const open=source.indexOf('{',start); let depth=0,quote=null,escape=false;
++  for(let i=open;i<source.length;i++){
++    const c=source[i];
++    if(quote){if(escape)escape=false;else if(c==='\\')escape=true;else if(c===quote)quote=null;continue;}
++    if(c==='"'||c==="'"||c==='`'){quote=c;continue;}
++    if(c==='{')depth++; else if(c==='}'&&--depth===0)return source.slice(start,i+1);
++  }
++  throw new Error('unterminated function');
++}
++
++test('la función real de arranque elimina duplicado físico y remapea adjuntos',async()=>{
++  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
++  const fn=extractFunction(html,'async function consolidateHistoricalFolioDuplicates()');
++  const stores={
++    cases:new Map([
++      ['old',{id:'old',status:'Asignado',updatedAt:'2026-08-20T10:00:00Z',general:{tramite:'T-A',folio:'275480',finca:'275480',owner:'Persona A'},workflow:{stage:'field',history:[]}}],
++      ['new',{id:'new',status:'Finalizado',updatedAt:'2026-08-21T10:00:00Z',general:{tramite:'T-B',folio:'275480',finca:'275480',ownerId:'0102'},workflow:{stage:'completed',history:[]}}]
++    ]),
++    photos:new Map([['p1',{id:'p1',caseId:'old'}]]),
++    documents:new Map([['d1',{id:'d1',caseId:'old',sha256:'abc'}]]),
++    recoveryCases:new Map(),recoveryPhotos:new Map(),recoveryDocuments:new Map()
++  };
++  const ctx={
++    L26IntegrityCore:core,STORE_CASES:'cases',STORE_PHOTOS:'photos',STORE_DOCUMENTS:'documents',STORE_RECOVERY_CASES:'recoveryCases',STORE_RECOVERY_PHOTOS:'recoveryPhotos',STORE_RECOVERY_DOCUMENTS:'recoveryDocuments',APP_VERSION:'27.3.9',structuredClone,console,
++    normalizeCase:x=>structuredClone(x),
++    async idbAll(store){return [...stores[store].values()].map(x=>structuredClone(x))},
++    async idbPut(store,val){const key=store.startsWith('recovery')?val.recoveryId:val.id;stores[store].set(key,structuredClone(val))},
++    async idbDelete(store,key){stores[store].delete(key)},
++    async documentsForCase(caseId){return [...stores.documents.values()].filter(x=>x.caseId===caseId).map(x=>structuredClone(x))},
++    async relinkCaseDocuments(){},
++    async backupCaseToRecovery(record,reason){stores.recoveryCases.set(`r-${record.id}`,{recoveryId:`r-${record.id}`,caseId:record.id,reason,case:structuredClone(record)})},
++  };
++  vm.createContext(ctx);vm.runInContext(fn,ctx);
++  const result=await ctx.consolidateHistoricalFolioDuplicates();
++  assert.equal(result.removed,1);
++  assert.equal(stores.cases.size,1);
++  assert.ok(stores.cases.has('new'));
++  assert.equal(stores.cases.get('new').general.owner,'Persona A');
++  assert.equal(stores.photos.get('p1').caseId,'new');
++  assert.equal(stores.documents.get('d1').caseId,'new');
++  assert.equal(stores.recoveryCases.size,2);
++});
+--- a/tests/l26_global_backup_runtime.test.js
++++ b/tests/l26_global_backup_runtime.test.js
+@@ -0,0 +1,77 @@
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const fs=require('node:fs');
++const vm=require('node:vm');
++const path=require('node:path');
++const core=require('../app/assets/l26_integrity_core.js');
++function extractFunction(source,signature){const start=source.indexOf(signature);if(start<0)throw new Error(`Missing ${signature}`);const open=source.indexOf('{',start);let depth=0,quote=null,escape=false;for(let i=open;i<source.length;i++){const c=source[i];if(quote){if(escape)escape=false;else if(c==='\\')escape=true;else if(c===quote)quote=null;continue}if(c==='"'||c==="'"||c==='`'){quote=c;continue}if(c==='{')depth++;else if(c==='}'&&--depth===0)return source.slice(start,i+1)}throw new Error('unterminated')}
++
++test('las funciones reales exportan y restauran respaldo JSON global con blobs',async()=>{
++ const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
++ const signatures=['async function serializeAttachmentForJson(record)','async function serializeRecoveryPhotoForJson(record)','async function serializeRecoveryDocumentForJson(record)','async function buildGlobalJsonBackup()','async function restoreGlobalBackupAttachments(attachments,idMap)','async function restoreGlobalBackupRecovery(recovery,idMap=new Map())'];
++ const code=signatures.map(sig=>extractFunction(html,sig)).join('\n');
++ const stores={cases:new Map([['a',{id:'a',general:{folio:'1'}}],['b',{id:'b',general:{folio:'2'},status:'Finalizado',workflow:{stage:'completed'}}]]),photos:new Map([['p',{id:'p',caseId:'a',blob:new Blob([Uint8Array.of(1,2,3)],{type:'image/jpeg'})}]]),documents:new Map([['d',{id:'d',caseId:'b',sha256:'sha',blob:new Blob([Uint8Array.of(4,5)],{type:'application/pdf'})}]]),recoveryCases:new Map([['r',{recoveryId:'r',caseId:'a',case:{id:'a'}}]]),recoveryPhotos:new Map([['rp',{recoveryId:'rp',caseId:'a',photo:{id:'oldp',caseId:'a',blob:new Blob([Uint8Array.of(6)],{type:'image/jpeg'})}}]]),recoveryDocuments:new Map([['rd',{recoveryId:'rd',caseId:'b',document:{id:'oldd',caseId:'b',blob:new Blob([Uint8Array.of(7)],{type:'application/pdf'})}}]])};
++ let uidn=0;
++ const ctx={L26IntegrityCore:core,APP_VERSION:'27.3.9',DB_VERSION:6,DB_NAME:'LibretaValoracionCR',storageMode:'indexeddb',STORE_CASES:'cases',STORE_PHOTOS:'photos',STORE_DOCUMENTS:'documents',STORE_RECOVERY_CASES:'recoveryCases',STORE_RECOVERY_PHOTOS:'recoveryPhotos',STORE_RECOVERY_DOCUMENTS:'recoveryDocuments',Blob,fetch,structuredClone,console,uid:()=>`u${++uidn}`,normalizeCase:x=>structuredClone(x),
++  async blobToDataUrl(blob){const bytes=Buffer.from(await blob.arrayBuffer());return `data:${blob.type||'application/octet-stream'};base64,${bytes.toString('base64')}`},
++  async idbAll(store){return [...stores[store].values()].map(x=>structuredClone(x))},
++  async idbGet(store,key){const v=stores[store].get(key);return v?structuredClone(v):undefined},
++  async idbPut(store,val){const key=store.startsWith('recovery')?val.recoveryId:val.id;stores[store].set(key,structuredClone(val))},
++  async documentsForCase(caseId){return [...stores.documents.values()].filter(x=>x.caseId===caseId).map(x=>structuredClone(x))},
++ };
++ vm.createContext(ctx);vm.runInContext(code,ctx);
++ const payload=await ctx.buildGlobalJsonBackup();
++ assert.equal(payload.schema,'FiscalizacionBIGlobalExport');
++ assert.equal(payload.counts.cases,2);assert.equal(payload.counts.photos,1);assert.equal(payload.counts.documents,1);assert.equal(payload.counts.recoveryPhotos,1);
++ assert.match(payload.attachments.photos[0].blobData,/^data:image\/jpeg;base64,/);
++ assert.match(payload.attachments.documents[0].blobData,/^data:application\/pdf;base64,/);
++ assert.match(payload.recovery.photos[0].photo.blobData,/^data:image\/jpeg;base64,/);
++ stores.photos.clear();stores.documents.clear();stores.recoveryCases.clear();stores.recoveryPhotos.clear();stores.recoveryDocuments.clear();
++ const restored=await ctx.restoreGlobalBackupAttachments(payload.attachments,new Map([['a','a'],['b','b']]));
++ const rec=await ctx.restoreGlobalBackupRecovery(payload.recovery);
++ assert.equal(restored.photos,1);assert.equal(restored.documents,1);assert.equal(rec.cases,1);assert.equal(rec.photos,1);assert.equal(rec.documents,1);
++ assert.equal(stores.photos.get('p').caseId,'a');assert.equal(stores.documents.get('d').caseId,'b');
++ assert.equal(Buffer.from(await stores.photos.get('p').blob.arrayBuffer()).toString('hex'),'010203');
++ assert.equal(Buffer.from(await stores.documents.get('d').blob.arrayBuffer()).toString('hex'),'0405');
++});
++
++test('la restauracion global no sobreescribe IDs locales y remapea recuperacion al caso consolidado',async()=>{
++ const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
++ const signatures=['async function restoreGlobalBackupAttachments(attachments,idMap)','async function restoreGlobalBackupRecovery(recovery,idMap=new Map())'];
++ const code=signatures.map(sig=>extractFunction(html,sig)).join('\n');
++ const stores={
++  cases:new Map([['local',{id:'local',general:{folio:'LOCAL'}}],['target',{id:'target',general:{folio:'275480'}}]]),
++  photos:new Map([['p-collision',{id:'p-collision',caseId:'local',note:'LOCAL-PHOTO',blob:new Blob([Uint8Array.of(9)],{type:'image/jpeg'})}]]),
++  documents:new Map([['d-collision',{id:'d-collision',caseId:'local',sha256:'local-sha',originalName:'local.pdf',blob:new Blob([Uint8Array.of(8)],{type:'application/pdf'})}]]),
++  recoveryCases:new Map([['r-collision',{recoveryId:'r-collision',caseId:'local',snapshotId:'local-snapshot',case:{id:'local',general:{folio:'LOCAL'}}}]]),
++  recoveryPhotos:new Map(),recoveryDocuments:new Map()
++ };
++ let uidn=0;
++ const ctx={STORE_CASES:'cases',STORE_PHOTOS:'photos',STORE_DOCUMENTS:'documents',STORE_RECOVERY_CASES:'recoveryCases',STORE_RECOVERY_PHOTOS:'recoveryPhotos',STORE_RECOVERY_DOCUMENTS:'recoveryDocuments',Blob,fetch,structuredClone,console,uid:()=>`new-${++uidn}`,
++  async idbAll(store){return [...stores[store].values()].map(x=>structuredClone(x))},
++  async idbGet(store,key){const v=stores[store].get(key);return v?structuredClone(v):undefined},
++  async idbPut(store,val){const key=store.startsWith('recovery')?val.recoveryId:val.id;stores[store].set(key,structuredClone(val))},
++  async documentsForCase(caseId){return [...stores.documents.values()].filter(x=>x.caseId===caseId).map(x=>structuredClone(x))},
++ };
++ vm.createContext(ctx);vm.runInContext(code,ctx);
++ const attachments={
++  photos:[{id:'p-collision',caseId:'old-source',note:'IMPORTED-PHOTO',blobData:'data:image/jpeg;base64,AQID'}],
++  documents:[{id:'d-collision',caseId:'old-source',sha256:'import-sha',originalName:'import.pdf',blobData:'data:application/pdf;base64,BAU='}]
++ };
++ const restored=await ctx.restoreGlobalBackupAttachments(attachments,new Map([['old-source','target']]));
++ assert.equal(restored.photos,1);assert.equal(restored.documents,1);
++ assert.equal(stores.photos.get('p-collision').caseId,'local','la foto local con ID colisionado debe conservarse');
++ assert.equal(stores.photos.get('p-collision').note,'LOCAL-PHOTO');
++ const importedPhoto=[...stores.photos.values()].find(x=>x.caseId==='target');
++ assert.ok(importedPhoto);assert.notEqual(importedPhoto.id,'p-collision');assert.equal(importedPhoto.note,'IMPORTED-PHOTO');
++ assert.equal(stores.documents.get('d-collision').caseId,'local','el documento local con ID colisionado debe conservarse');
++ const importedDoc=[...stores.documents.values()].find(x=>x.caseId==='target');
++ assert.ok(importedDoc);assert.notEqual(importedDoc.id,'d-collision');assert.equal(importedDoc.sha256,'import-sha');
++
++ const recovery={cases:[{recoveryId:'r-collision',snapshotId:'remote-snapshot',caseId:'old-source',case:{id:'old-source',general:{folio:'275480'}}}],photos:[],documents:[]};
++ const rec=await ctx.restoreGlobalBackupRecovery(recovery,new Map([['old-source','target']]));
++ assert.equal(rec.cases,1);
++ assert.equal(stores.recoveryCases.get('r-collision').caseId,'local','el respaldo local con recoveryId colisionado debe conservarse');
++ const importedRec=[...stores.recoveryCases.values()].find(x=>x.snapshotId==='remote-snapshot');
++ assert.ok(importedRec);assert.notEqual(importedRec.recoveryId,'r-collision');assert.equal(importedRec.caseId,'target');assert.equal(importedRec.case.id,'old-source','el contenido del snapshot se conserva original');
++});
+--- a/tests/test_audit_corrections_contract.py
++++ b/tests/test_audit_corrections_contract.py
+@@ -0,0 +1,19 @@
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[1]
++HTML=(ROOT/'index.html').read_text(encoding='utf-8')
++
++def test_ui_exposes_complete_json_and_zip_backups():
++    assert 'id="globalJsonExportBtn"' in HTML
++    assert 'id="globalZipExportBtn"' in HTML
++    assert 'FiscalizacionBIGlobalExport' in HTML
++    assert 'respaldo_completo.json' in HTML
++
++def test_startup_runs_physical_historical_folio_consolidation():
++    assert 'async function consolidateHistoricalFolioDuplicates' in HTML
++    init=HTML[HTML.index('(async function init()'):]
++    assert 'await consolidateHistoricalFolioDuplicates()' in init
++
++def test_global_json_import_has_dedicated_attachment_restore_path():
++    assert "data?.schema==='FiscalizacionBIGlobalExport'" in HTML
++    assert 'restoreGlobalBackupAttachments' in HTML
++    assert 'restoreGlobalBackupRecovery' in HTML
+--- a/tests/test_audit_corrections_e2e.py
++++ b/tests/test_audit_corrections_e2e.py
+@@ -0,0 +1,139 @@
++from pathlib import Path
++import contextlib
++import http.server
++import socketserver
++import threading
++import os
++import pytest
++
++ROOT = Path(__file__).resolve().parents[1]
++
++@contextlib.contextmanager
++def serve_repo():
++    class Handler(http.server.SimpleHTTPRequestHandler):
++        def log_message(self, *args):
++            pass
++    handler = lambda *a, **kw: Handler(*a, directory=str(ROOT), **kw)
++    with socketserver.TCPServer(('127.0.0.1', 0), handler) as server:
++        thread = threading.Thread(target=server.serve_forever, daemon=True)
++        thread.start()
++        try:
++            yield f'http://127.0.0.1:{server.server_address[1]}/index.html'
++        finally:
++            server.shutdown()
++            thread.join(timeout=2)
++
++
++def chromium_path():
++    for candidate in ('/usr/bin/chromium', '/usr/bin/chromium-browser'):
++        if Path(candidate).exists():
++            return candidate
++    return None
++
++pytestmark = pytest.mark.skipif(
++    os.environ.get('RUN_BROWSER_E2E') != '1' or not chromium_path(),
++    reason='Browser E2E requires RUN_BROWSER_E2E=1 and local Chromium',
++)
++
++
++def open_app():
++    from playwright.sync_api import sync_playwright
++    p = sync_playwright().start()
++    browser = context = server = None
++    try:
++        browser = p.chromium.launch(headless=True, executable_path=chromium_path(), args=['--no-sandbox'])
++        context = browser.new_context(accept_downloads=True)
++        page = context.new_page()
++        server = serve_repo()
++        url = server.__enter__()
++        page.goto(url, wait_until='load')
++        page.wait_for_function("typeof idbAll === 'function' && typeof blankCase === 'function' && !!window.L26IntegrityCore")
++        page.wait_for_timeout(250)
++        return p, browser, context, page, server
++    except Exception:
++        if server is not None:
++            server.__exit__(None, None, None)
++        if context is not None:
++            context.close()
++        if browser is not None:
++            browser.close()
++        p.stop()
++        raise
++
++
++def close_app(p, browser, context, server):
++    context.close()
++    browser.close()
++    p.stop()
++    server.__exit__(None, None, None)
++
++
++def test_startup_physically_consolidates_historical_duplicate_folios_and_relinks_attachments():
++    p, browser, context, page, server = open_app()
++    try:
++        page.evaluate("""async () => {
++          const a=blankCase(); a.id='dup-a'; a.general.tramite='T-A'; a.general.folio='275480'; a.general.finca='275480'; a.general.owner='Persona A'; a.updatedAt='2026-08-20T10:00:00.000Z';
++          const b=blankCase(); b.id='dup-b'; b.general.tramite='T-B'; b.general.folio='275480'; b.general.finca='275480'; b.general.ownerId='0102030405'; b.status='Finalizado'; b.workflow.stage='completed'; b.updatedAt='2026-08-21T10:00:00.000Z';
++          await idbPut(STORE_CASES,a); await idbPut(STORE_CASES,b);
++          await idbPut(STORE_PHOTOS,{id:'photo-a',caseId:'dup-a',category:'Terreno',blob:new Blob([new Uint8Array([1,2,3])],{type:'image/jpeg'})});
++          await idbPut(STORE_DOCUMENTS,{id:'doc-b',caseId:'dup-b',originalName:'prueba.pdf',blob:new Blob([new Uint8Array([4,5,6])],{type:'application/pdf'})});
++        }""")
++        assert page.evaluate("(async()=> (await idbAll(STORE_CASES)).filter(c=>L26IntegrityCore.importFolioKey(c)==='275480').length)()") == 2
++        page.reload(wait_until='load')
++        page.wait_for_function("typeof idbAll === 'function' && !!window.L26IntegrityCore")
++        page.wait_for_timeout(500)
++        state = page.evaluate("""async () => {
++          const cases=(await idbAll(STORE_CASES)).filter(c=>L26IntegrityCore.importFolioKey(c)==='275480');
++          const photos=await idbAll(STORE_PHOTOS), docs=await idbAll(STORE_DOCUMENTS), recovery=await idbAll(STORE_RECOVERY_CASES);
++          return {cases, photos, docs, recovery};
++        }""")
++        assert len(state['cases']) == 1, state
++        survivor = state['cases'][0]
++        assert survivor['id'] == 'dup-b', survivor
++        assert survivor['general']['owner'] == 'Persona A'
++        assert survivor['general']['ownerId'] == '0102030405'
++        assert survivor['workflow']['stage'] == 'completed'
++        assert next(p for p in state['photos'] if p['id']=='photo-a')['caseId'] == 'dup-b'
++        assert next(d for d in state['docs'] if d['id']=='doc-b')['caseId'] == 'dup-b'
++        assert any('Consolidación automática por Folio' in (r.get('reason') or '') for r in state['recovery'])
++    finally:
++        close_app(p, browser, context, server)
++
++
++def test_global_json_export_and_non_destructive_reimport_restores_all_current_attachments(tmp_path):
++    p, browser, context, page, server = open_app()
++    try:
++        page.evaluate("""async () => {
++          const a=blankCase(); a.id='case-active'; a.general.tramite='A-1'; a.general.folio='111111'; a.general.finca='111111'; a.general.owner='Activa'; a.updatedAt=new Date().toISOString();
++          const b=blankCase(); b.id='case-management'; b.general.tramite='G-1'; b.general.folio='222222'; b.general.finca='222222'; b.general.owner='Gestión'; b.status='Finalizado'; b.workflow.stage='completed'; b.updatedAt=new Date().toISOString();
++          await idbPut(STORE_CASES,a); await idbPut(STORE_CASES,b);
++          await idbPut(STORE_PHOTOS,{id:'photo-global',caseId:'case-active',category:'Terreno',blob:new Blob([new Uint8Array([7,8,9])],{type:'image/jpeg'})});
++          await idbPut(STORE_DOCUMENTS,{id:'doc-global',caseId:'case-management',originalName:'global.pdf',mimeType:'application/pdf',blob:new Blob([new Uint8Array([10,11,12])],{type:'application/pdf'})});
++          await renderCaseList();
++        }""")
++        assert page.locator('#globalJsonExportBtn').count() == 1
++        with page.expect_download() as info:
++            page.click('#globalJsonExportBtn')
++        out = tmp_path / 'respaldo_global.json'
++        info.value.save_as(out)
++        payload = __import__('json').loads(out.read_text(encoding='utf-8'))
++        assert payload['schema'] == 'FiscalizacionBIGlobalExport'
++        assert payload['counts']['cases'] == 2
++        assert {c['id'] for c in payload['cases']} == {'case-active','case-management'}
++        assert any(x['id']=='photo-global' and x.get('blobData','').startswith('data:image/jpeg') for x in payload['attachments']['photos'])
++        assert any(x['id']=='doc-global' and x.get('blobData','').startswith('data:application/pdf') for x in payload['attachments']['documents'])
++
++        # Delete attachments only; reimport must restore them and not duplicate cases.
++        page.evaluate("""async () => { await idbDelete(STORE_PHOTOS,'photo-global'); await idbDelete(STORE_DOCUMENTS,'doc-global'); }""")
++        page.set_input_files('#expedientePackageImport', str(out))
++        page.wait_for_timeout(900)
++        restored = page.evaluate("""async () => ({
++          cases:(await idbAll(STORE_CASES)).filter(c=>['111111','222222'].includes(L26IntegrityCore.importFolioKey(c))).map(c=>c.id),
++          photos:(await idbAll(STORE_PHOTOS)).filter(x=>x.id==='photo-global').map(x=>x.caseId),
++          docs:(await idbAll(STORE_DOCUMENTS)).filter(x=>x.id==='doc-global').map(x=>x.caseId)
++        })""")
++        assert sorted(restored['cases']) == ['case-active','case-management']
++        assert restored['photos'] == ['case-active']
++        assert restored['docs'] == ['case-management']
++    finally:
++        close_app(p, browser, context, server)
+--- a/tests/test_packaged_runtime_verifier.py
++++ b/tests/test_packaged_runtime_verifier.py
+@@ -0,0 +1,94 @@
++from pathlib import Path
++import importlib.util
++import zipfile
++
++SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'verify_packaged_runtime.py'
++
++
++def load_module():
++    spec = importlib.util.spec_from_file_location('verify_packaged_runtime', SCRIPT)
++    module = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    return module
++
++
++def make_pdf_runtime(root: Path):
++    vendor = root / 'app/assets/vendor/pdfjs-4.10.38-legacy'
++    (vendor / 'cmaps').mkdir(parents=True, exist_ok=True)
++    (vendor / 'standard_fonts').mkdir(parents=True, exist_ok=True)
++    (vendor / 'pdf.min.mjs').write_text('x' * 100_001, encoding='utf-8')
++    (vendor / 'pdf.worker.min.mjs').write_text('x' * 500_001, encoding='utf-8')
++    (vendor / 'cmaps' / 'Identity-H.bcmap').write_bytes(b'cmap')
++    (vendor / 'standard_fonts' / 'FoxitSans.pfb').write_bytes(b'font')
++
++
++def runtime_html():
++    return '<html>globalJsonExportBtn consolidateHistoricalFolioDuplicates l26-reader://</html>'
++
++
++def test_windows_verifier_accepts_packaged_runtime(tmp_path):
++    mod = load_module()
++    unpacked = tmp_path / 'win-unpacked'
++    resources = unpacked / 'resources'
++    resources.mkdir(parents=True)
++    (resources / 'app.asar').write_bytes(b'l26-reader reader-preload.js ' + b'x' * 4096)
++    app = resources / 'app'
++    (app / 'app/assets').mkdir(parents=True)
++    (app / 'index.html').write_text(runtime_html(), encoding='utf-8')
++    (app / 'sw.js').write_text('cache', encoding='utf-8')
++    (app / 'app/assets/l26_integrity_core.js').write_text('integrity', encoding='utf-8')
++    make_pdf_runtime(app)
++
++    report = mod.verify_windows(tmp_path)
++    assert report['ok'] is True
++    assert report['runtime_root'] == str(app)
++
++
++def test_android_verifier_accepts_packaged_runtime(tmp_path):
++    mod = load_module()
++    apk = tmp_path / 'app-debug.apk'
++    vendor = 'assets/www/app/assets/vendor/pdfjs-4.10.38-legacy/'
++    with zipfile.ZipFile(apk, 'w') as zf:
++        zf.writestr('assets/www/index.html', runtime_html())
++        zf.writestr('assets/www/app/assets/l26_integrity_core.js', 'integrity')
++        zf.writestr(vendor + 'pdf.min.mjs', 'x' * 100_001)
++        zf.writestr(vendor + 'pdf.worker.min.mjs', 'x' * 500_001)
++        zf.writestr(vendor + 'cmaps/Identity-H.bcmap', b'cmap')
++        zf.writestr(vendor + 'standard_fonts/FoxitSans.pfb', b'font')
++
++    report = mod.verify_android(apk)
++    assert report['ok'] is True
++    assert report['apk'] == str(apk)
++
++
++def test_windows_verifier_rejects_missing_offline_pdf_runtime(tmp_path):
++    mod = load_module()
++    resources = tmp_path / 'win-unpacked/resources'
++    resources.mkdir(parents=True)
++    (resources / 'app.asar').write_bytes(b'x' * 4096)
++    app = resources / 'app'
++    (app / 'app/assets').mkdir(parents=True)
++    (app / 'index.html').write_text(runtime_html(), encoding='utf-8')
++    (app / 'sw.js').write_text('cache', encoding='utf-8')
++    (app / 'app/assets/l26_integrity_core.js').write_text('integrity', encoding='utf-8')
++
++    report = mod.verify_windows(tmp_path)
++    assert report['ok'] is False
++    assert any('pdf.min.mjs' in item for item in report['errors'])
++
++
++def test_windows_verifier_rejects_asar_without_reader_protocol(tmp_path):
++    mod = load_module()
++    resources = tmp_path / 'win-unpacked/resources'
++    resources.mkdir(parents=True)
++    (resources / 'app.asar').write_bytes(b'x' * 4096)
++    app = resources / 'app'
++    (app / 'app/assets').mkdir(parents=True)
++    (app / 'index.html').write_text(runtime_html(), encoding='utf-8')
++    (app / 'sw.js').write_text('cache', encoding='utf-8')
++    (app / 'app/assets/l26_integrity_core.js').write_text('integrity', encoding='utf-8')
++    make_pdf_runtime(app)
++
++    report = mod.verify_windows(tmp_path)
++    assert report['ok'] is False
++    assert any('l26-reader' in item for item in report['errors'])
+--- a/tests/test_packaged_runtime_workflow_contract.py
++++ b/tests/test_packaged_runtime_workflow_contract.py
+@@ -0,0 +1,25 @@
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++
++
++def read(name):
++    return (ROOT / '.github/workflows' / name).read_text(encoding='utf-8')
++
++
++def test_windows_workflow_verifies_packaged_runtime():
++    text = read('windows.yml')
++    assert 'verify_packaged_runtime.py --windows desktop/dist' in text
++    assert text.index('npm run dist:win') < text.index('verify_packaged_runtime.py --windows desktop/dist')
++
++
++def test_android_workflow_verifies_final_apk():
++    text = read('android.yml')
++    assert 'verify_packaged_runtime.py --android android/app/build/outputs/apk/debug/app-debug.apk' in text
++    assert text.index('assembleDebug') < text.index('verify_packaged_runtime.py --android android/app/build/outputs/apk/debug/app-debug.apk')
++
++
++def test_release_workflow_verifies_both_artifacts():
++    text = read('release.yml')
++    assert 'verify_packaged_runtime.py --windows desktop/dist' in text
++    assert 'verify_packaged_runtime.py --android android/app/build/outputs/apk/release/app-release.apk' in text

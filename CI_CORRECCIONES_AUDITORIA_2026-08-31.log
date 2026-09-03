@@ -1,0 +1,558 @@
++ /opt/pyvenv/bin/python -m pytest -q
+....................................................ss.................. [ 33%]
+....s................................................................... [ 67%]
+....................................................................     [100%]
+209 passed, 3 skipped in 9.08s
++ node --test /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/tests/import_rules.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/tests/l26_audit_corrections_core.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/tests/l26_croquis_core.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/tests/l26_folio_posesoria_import.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/tests/l26_global_backup_runtime.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/tests/l26_historical_consolidation_runtime.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/tests/l26_integrity_core.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/tests/l26_pdf_reader_core.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/tests/l26_reader_apply_core.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/tests/l26_requested_changes.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/tests/l26_transaction_identity.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/tests/l26_year_filter_core.test.js
+TAP version 13
+# Subtest: normaliza la identidad por folio, plano y derecho
+ok 1 - normaliza la identidad por folio, plano y derecho
+  ---
+  duration_ms: 3.303235
+  type: 'test'
+  ...
+# Subtest: extrae enlace desde cualquier columna
+ok 2 - extrae enlace desde cualquier columna
+  ---
+  duration_ms: 5.599876
+  type: 'test'
+  ...
+# Subtest: convierte fechas seriales de Excel y conserva identificaciones textuales
+ok 3 - convierte fechas seriales de Excel y conserva identificaciones textuales
+  ---
+  duration_ms: 2.341902
+  type: 'test'
+  ...
+# Subtest: clasifica repetición exacta y diferencias de plano o derecho
+ok 4 - clasifica repetición exacta y diferencias de plano o derecho
+  ---
+  duration_ms: 0.669666
+  type: 'test'
+  ...
+# Subtest: detecta campos y aplica solo valores vacíos salvo confirmación
+ok 5 - detecta campos y aplica solo valores vacíos salvo confirmación
+  ---
+  duration_ms: 6.033908
+  type: 'test'
+  ...
+# Subtest: encuentra encabezados después de títulos y mapea Libro2
+ok 6 - encuentra encabezados después de títulos y mapea Libro2
+  ---
+  duration_ms: 2.866627
+  type: 'test'
+  ...
+# Subtest: consolida todas las filas del mismo Folio aunque cambie el plano
+ok 7 - consolida todas las filas del mismo Folio aunque cambie el plano
+  ---
+  duration_ms: 0.731888
+  type: 'test'
+  ...
+# Subtest: un folio existente sin plano o derecho no absorbe otra combinación
+ok 8 - un folio existente sin plano o derecho no absorbe otra combinación
+  ---
+  duration_ms: 0.341191
+  type: 'test'
+  ...
+# Subtest: 407 filas con 47 folios se consolidan a 47 trámites por Folio
+ok 9 - 407 filas con 47 folios se consolidan a 47 trámites por Folio
+  ---
+  duration_ms: 5.853839
+  type: 'test'
+  ...
+# Subtest: nombra el nivel respecto de la vía y firma la diferencia observada
+ok 10 - nombra el nivel respecto de la vía y firma la diferencia observada
+  ---
+  duration_ms: 0.774893
+  type: 'test'
+  ...
+# Subtest: las notas del poblado se presentan como acordeón cerrado
+ok 11 - las notas del poblado se presentan como acordeón cerrado
+  ---
+  duration_ms: 0.858114
+  type: 'test'
+  ...
+# Subtest: el expediente abierto muestra el enlace importado y permite abrirlo
+ok 12 - el expediente abierto muestra el enlace importado y permite abrirlo
+  ---
+  duration_ms: 115.048383
+  type: 'test'
+  ...
+# Subtest: detectFields reconoce ubicación administrativa y tipo de trámite en texto PDF
+ok 13 - detectFields reconoce ubicación administrativa y tipo de trámite en texto PDF
+  ---
+  duration_ms: 2.639439
+  type: 'test'
+  ...
+# Subtest: protege trámite y valida distrito antes de aplicar lectura automática
+ok 14 - protege trámite y valida distrito antes de aplicar lectura automática
+  ---
+  duration_ms: 2.635098
+  type: 'test'
+  ...
+# Subtest: distrito no oficial se excluye de la actualización automática
+ok 15 - distrito no oficial se excluye de la actualización automática
+  ---
+  duration_ms: 0.19891
+  type: 'test'
+  ...
+# Subtest: dedupeRows consolida trámites distintos cuando comparten el mismo Folio
+ok 16 - dedupeRows consolida trámites distintos cuando comparten el mismo Folio
+  ---
+  duration_ms: 0.165847
+  type: 'test'
+  ...
+# Subtest: lector separa fecha de declaración y fecha de inspección y no aplica fecha genérica
+ok 17 - lector separa fecha de declaración y fecha de inspección y no aplica fecha genérica
+  ---
+  duration_ms: 0.681112
+  type: 'test'
+  ...
+# Subtest: planifica consolidación histórica por folio y conserva casos posesorios sin folio separados
+ok 18 - planifica consolidación histórica por folio y conserva casos posesorios sin folio separados
+  ---
+  duration_ms: 3.781269
+  type: 'test'
+  ...
+# Subtest: combina historias y metadatos sin perder datos de dos registros del mismo folio
+ok 19 - combina historias y metadatos sin perder datos de dos registros del mismo folio
+  ---
+  duration_ms: 3.61123
+  type: 'test'
+  ...
+# Subtest: respaldo global declara esquema y resume casos sin depender de UI
+ok 20 - respaldo global declara esquema y resume casos sin depender de UI
+  ---
+  duration_ms: 0.856638
+  type: 'test'
+  ...
+# Subtest: al consolidar conserva campos complementarios de una misma construcción por id
+ok 21 - al consolidar conserva campos complementarios de una misma construcción por id
+  ---
+  duration_ms: 5.895311
+  type: 'test'
+  ...
+# Subtest: factor de área solo admite normal, x2 y x1/2
+ok 22 - factor de área solo admite normal, x2 y x1/2
+  ---
+  duration_ms: 1.702437
+  type: 'test'
+  ...
+# Subtest: rotar 90 grados conserva distancias entre vértices
+ok 23 - rotar 90 grados conserva distancias entre vértices
+  ---
+  duration_ms: 0.601509
+  type: 'test'
+  ...
+# Subtest: mover polígono conserva forma y lo mantiene dentro del lienzo
+ok 24 - mover polígono conserva forma y lo mantiene dentro del lienzo
+  ---
+  duration_ms: 0.529731
+  type: 'test'
+  ...
+# Subtest: cota usa offset normal y línea de dimensión separada del lado
+ok 25 - cota usa offset normal y línea de dimensión separada del lado
+  ---
+  duration_ms: 0.458081
+  type: 'test'
+  ...
+# Subtest: etiqueta de polígono enlaza número y nombre y alterna esquina
+ok 26 - etiqueta de polígono enlaza número y nombre y alterna esquina
+  ---
+  duration_ms: 0.508504
+  type: 'test'
+  ...
+# Subtest: escala común conserva igual longitud visual para lados métricos iguales
+ok 27 - escala común conserva igual longitud visual para lados métricos iguales
+  ---
+  duration_ms: 6.834452
+  type: 'test'
+  ...
+# Subtest: escala común conserva el centro solicitado al mover un polígono cuando cabe
+ok 28 - escala común conserva el centro solicitado al mover un polígono cuando cabe
+  ---
+  duration_ms: 0.740465
+  type: 'test'
+  ...
+# Subtest: leyenda de polígonos usa una esquina fija independiente de la geometría
+ok 29 - leyenda de polígonos usa una esquina fija independiente de la geometría
+  ---
+  duration_ms: 1.496855
+  type: 'test'
+  ...
+# Subtest: escala métrica es isotrópica en un lienzo rectangular
+ok 30 - escala métrica es isotrópica en un lienzo rectangular
+  ---
+  duration_ms: 1.016725
+  type: 'test'
+  ...
+# Subtest: Excel consolida por Folio aunque cambien trámite, plano o derecho
+ok 31 - Excel consolida por Folio aunque cambien trámite, plano o derecho
+  ---
+  duration_ms: 2.707779
+  type: 'test'
+  ...
+# Subtest: JSON encuentra existente por Folio/Finca antes de crear otro trámite
+ok 32 - JSON encuentra existente por Folio/Finca antes de crear otro trámite
+  ---
+  duration_ms: 1.607148
+  type: 'test'
+  ...
+# Subtest: conteo de trámites usa Folio/Finca único y posesoria sin Folio cuenta individualmente
+ok 33 - conteo de trámites usa Folio/Finca único y posesoria sin Folio cuenta individualmente
+  ---
+  duration_ms: 10.893236
+  type: 'test'
+  ...
+# Subtest: un Folio trasladado a Gestión no se vuelve a contar como activo por un duplicado histórico
+ok 34 - un Folio trasladado a Gestión no se vuelve a contar como activo por un duplicado histórico
+  ---
+  duration_ms: 0.488226
+  type: 'test'
+  ...
+# Subtest: las funciones reales exportan y restauran respaldo JSON global con blobs
+ok 35 - las funciones reales exportan y restauran respaldo JSON global con blobs
+  ---
+  duration_ms: 270.334838
+  type: 'test'
+  ...
+# Subtest: la restauracion global no sobreescribe IDs locales y remapea recuperacion al caso consolidado
+ok 36 - la restauracion global no sobreescribe IDs locales y remapea recuperacion al caso consolidado
+  ---
+  duration_ms: 163.995678
+  type: 'test'
+  ...
+# Consolidación física por Folio completada {
+#   groups: 1,
+#   removed: 1,
+#   photosRelinked: 1,
+#   documentsRelinked: 1,
+#   documentsDeduped: 0,
+#   errors: []
+# }
+# Subtest: la función real de arranque elimina duplicado físico y remapea adjuntos
+ok 37 - la función real de arranque elimina duplicado físico y remapea adjuntos
+  ---
+  duration_ms: 149.72259
+  type: 'test'
+  ...
+# Subtest: trámites distintos del mismo inmueble conservan identidades distintas
+ok 38 - trámites distintos del mismo inmueble conservan identidades distintas
+  ---
+  duration_ms: 4.453192
+  type: 'test'
+  ...
+# Subtest: mismo trámite con propiedades distintas conserva identidades distintas
+ok 39 - mismo trámite con propiedades distintas conserva identidades distintas
+  ---
+  duration_ms: 0.611423
+  type: 'test'
+  ...
+# Subtest: sin trámite usa identidad de propiedad separada de los trámites conocidos
+ok 40 - sin trámite usa identidad de propiedad separada de los trámites conocidos
+  ---
+  duration_ms: 0.696001
+  type: 'test'
+  ...
+# Subtest: normaliza solamente distritos oficiales de Sarapiquí
+ok 41 - normaliza solamente distritos oficiales de Sarapiquí
+  ---
+  duration_ms: 5.691123
+  type: 'test'
+  ...
+# Subtest: auditoría detecta documento ligado a trámite distinto y distrito sospechoso
+ok 42 - auditoría detecta documento ligado a trámite distinto y distrito sospechoso
+  ---
+  duration_ms: 2.967083
+  type: 'test'
+  ...
+# Subtest: recordsMayMerge rechaza mismo id cuando el trámite es distinto
+ok 43 - recordsMayMerge rechaza mismo id cuando el trámite es distinto
+  ---
+  duration_ms: 0.535712
+  type: 'test'
+  ...
+# Subtest: recordsMayMerge permite identidad transaccional exacta
+ok 44 - recordsMayMerge permite identidad transaccional exacta
+  ---
+  duration_ms: 0.609231
+  type: 'test'
+  ...
+# Subtest: auditoría detecta número de trámite del nombre de archivo diferente al caso
+ok 45 - auditoría detecta número de trámite del nombre de archivo diferente al caso
+  ---
+  duration_ms: 0.569211
+  type: 'test'
+  ...
+# Subtest: encuentra copia recuperable de un trámite que falta en la base actual
+ok 46 - encuentra copia recuperable de un trámite que falta en la base actual
+  ---
+  duration_ms: 24.41853
+  type: 'test'
+  ...
+# Subtest: no propone recuperar una identidad que ya existe exactamente
+ok 47 - no propone recuperar una identidad que ya existe exactamente
+  ---
+  duration_ms: 1.558547
+  type: 'test'
+  ...
+# Subtest: PDF con trámite en el nombre nunca cae a otro trámite por la misma finca
+ok 48 - PDF con trámite en el nombre nunca cae a otro trámite por la misma finca
+  ---
+  duration_ms: 1.858466
+  type: 'test'
+  ...
+# Subtest: PDF con trámite inexistente no se vincula a otro trámite aunque coincida la finca
+ok 49 - PDF con trámite inexistente no se vincula a otro trámite aunque coincida la finca
+  ---
+  duration_ms: 0.505965
+  type: 'test'
+  ...
+# Subtest: PDF de un trámite con varias propiedades usa finca o folio solo dentro del mismo trámite
+ok 50 - PDF de un trámite con varias propiedades usa finca o folio solo dentro del mismo trámite
+  ---
+  duration_ms: 0.931842
+  type: 'test'
+  ...
+# Subtest: rectsIntersect detecta solapamiento y descarta rectángulos separados
+ok 51 - rectsIntersect detecta solapamiento y descarta rectángulos separados
+  ---
+  duration_ms: 2.276194
+  type: 'test'
+  ...
+# Subtest: textFromItemsInRect ordena texto por línea y posición horizontal
+ok 52 - textFromItemsInRect ordena texto por línea y posición horizontal
+  ---
+  duration_ms: 0.863871
+  type: 'test'
+  ...
+# Subtest: extractTextFromPdf recorre todas las páginas y conserva saltos entre páginas
+ok 53 - extractTextFromPdf recorre todas las páginas y conserva saltos entre páginas
+  ---
+  duration_ms: 1.151025
+  type: 'test'
+  ...
+# Subtest: extractTextFromPdf informa PDF sin texto digital
+ok 54 - extractTextFromPdf informa PDF sin texto digital
+  ---
+  duration_ms: 0.772032
+  type: 'test'
+  ...
+# Subtest: PDF fill-missing mode does not replace existing values
+ok 55 - PDF fill-missing mode does not replace existing values
+  ---
+  duration_ms: 3.546344
+  type: 'test'
+  ...
+# Subtest: web reader mode may apply detected values to non-protected fields
+ok 56 - web reader mode may apply detected values to non-protected fields
+  ---
+  duration_ms: 0.588396
+  type: 'test'
+  ...
+# Subtest: management supports independent notified and registered states
+ok 57 - management supports independent notified and registered states
+  ---
+  duration_ms: 3.477618
+  type: 'test'
+  ...
+# Subtest: management color priority is blue for action, red for >1 year without action, yellow otherwise
+ok 58 - management color priority is blue for action, red for >1 year without action, yellow otherwise
+  ---
+  duration_ms: 0.509514
+  type: 'test'
+  ...
+# Subtest: management filters notified and registered independently
+ok 59 - management filters notified and registered independently
+  ---
+  duration_ms: 0.589492
+  type: 'test'
+  ...
+# Subtest: districts render sentence case and compare regardless case/articles
+ok 60 - districts render sentence case and compare regardless case/articles
+  ---
+  duration_ms: 0.886046
+  type: 'test'
+  ...
+# Subtest: places render title case and compare articles as equivalent
+ok 61 - places render title case and compare articles as equivalent
+  ---
+  duration_ms: 5.813238
+  type: 'test'
+  ...
+# Subtest: empty district is inferred only when same place has one district
+ok 62 - empty district is inferred only when same place has one district
+  ---
+  duration_ms: 2.181746
+  type: 'test'
+  ...
+# Subtest: ambiguous same place does not infer a district
+ok 63 - ambiguous same place does not infer a district
+  ---
+  duration_ms: 1.867264
+  type: 'test'
+  ...
+# Subtest: active count is total minus cases transferred to management
+ok 64 - active count is total minus cases transferred to management
+  ---
+  duration_ms: 0.327781
+  type: 'test'
+  ...
+# Subtest: invalid district evidence is not propagated into empty cases
+ok 65 - invalid district evidence is not propagated into empty cases
+  ---
+  duration_ms: 1.389215
+  type: 'test'
+  ...
+# Subtest: summary counts use total cases and subtract management cases from active
+ok 66 - summary counts use total cases and subtract management cases from active
+  ---
+  duration_ms: 3.829697
+  type: 'test'
+  ...
+# Subtest: management overdue age ignores workflow completed stage and depends only on chronology date
+ok 67 - management overdue age ignores workflow completed stage and depends only on chronology date
+  ---
+  duration_ms: 0.76802
+  type: 'test'
+  ...
+# Subtest: misma propiedad con trámites distintos se consolida por Folio
+ok 68 - misma propiedad con trámites distintos se consolida por Folio
+  ---
+  duration_ms: 2.345759
+  type: 'test'
+  ...
+# Subtest: repetición exacta de trámite y propiedad sí se consolida
+ok 69 - repetición exacta de trámite y propiedad sí se consolida
+  ---
+  duration_ms: 0.489552
+  type: 'test'
+  ...
+# Subtest: mismo trámite con propiedades distintas conserva registros distintos
+ok 70 - mismo trámite con propiedades distintas conserva registros distintos
+  ---
+  duration_ms: 0.401332
+  type: 'test'
+  ...
+# Subtest: caseTramiteYear obtiene el año del número de trámite
+ok 71 - caseTramiteYear obtiene el año del número de trámite
+  ---
+  duration_ms: 3.260003
+  type: 'test'
+  ...
+# Subtest: yearEntries ordena años recientes primero y conserva Sin año
+ok 72 - yearEntries ordena años recientes primero y conserva Sin año
+  ---
+  duration_ms: 2.288689
+  type: 'test'
+  ...
+# Subtest: filterByYear limita los casos al año de trámite seleccionado
+ok 73 - filterByYear limita los casos al año de trámite seleccionado
+  ---
+  duration_ms: 1.294792
+  type: 'test'
+  ...
+1..73
+# tests 73
+# suites 0
+# pass 73
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1375.413521
++ node --test /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/desktop/test/config.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/desktop/test/internal-reader.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/desktop/test/pwa-desktop-handoff.test.js /mnt/data/l26_audit_corrections/FISCALIZACION_L26_V27_3_9_FINAL_AUDITADA_GITHUB_2026-08-30/desktop/test/server.test.js
+TAP version 13
+# Subtest: Electron main process keeps L-26 isolated from Node
+ok 1 - Electron main process keeps L-26 isolated from Node
+  ---
+  duration_ms: 2.559749
+  type: 'test'
+  ...
+# Subtest: Electron main process starts loopback server and protects navigation
+ok 2 - Electron main process starts loopback server and protects navigation
+  ---
+  duration_ms: 0.691985
+  type: 'test'
+  ...
+# Subtest: Electron keeps a single instance so the IndexedDB origin stays stable
+ok 3 - Electron keeps a single instance so the IndexedDB origin stays stable
+  ---
+  duration_ms: 0.530234
+  type: 'test'
+  ...
+# Subtest: desktop provides an isolated internal web reader instead of forcing every https link external
+ok 4 - desktop provides an isolated internal web reader instead of forcing every https link external
+  ---
+  duration_ms: 2.647864
+  type: 'test'
+  ...
+# Subtest: main app preload exposes narrow open/read APIs through contextBridge
+ok 5 - main app preload exposes narrow open/read APIs through contextBridge
+  ---
+  duration_ms: 0.732828
+  type: 'test'
+  ...
+# Subtest: reader toolbar supports navigation, page read, area read and close
+ok 6 - reader toolbar supports navigation, page read, area read and close
+  ---
+  duration_ms: 0.757298
+  type: 'test'
+  ...
+# Subtest: desktop package includes the preload and reader runtime files
+ok 7 - desktop package includes the preload and reader runtime files
+  ---
+  duration_ms: 0.594489
+  type: 'test'
+  ...
+# Subtest: Windows installer registers l26-reader protocol for Electron
+ok 8 - Windows installer registers l26-reader protocol for Electron
+  ---
+  duration_ms: 2.512387
+  type: 'test'
+  ...
+# Subtest: Windows Web/PWA invokes installed Electron reader instead of browser fallback
+ok 9 - Windows Web/PWA invokes installed Electron reader instead of browser fallback
+  ---
+  duration_ms: 6.431664
+  type: 'test'
+  ...
+# Subtest: main process decodes exact Metro login URL from deep link
+ok 10 - main process decodes exact Metro login URL from deep link
+  ---
+  duration_ms: 2.513086
+  type: 'test'
+  ...
+# Subtest: serves index.html only on loopback with expected content type
+ok 11 - serves index.html only on loopback with expected content type
+  ---
+  duration_ms: 157.116014
+  type: 'test'
+  ...
+# Subtest: serves JSON and disables cache for service worker
+ok 12 - serves JSON and disables cache for service worker
+  ---
+  duration_ms: 3033.576372
+  type: 'test'
+  ...
+# Subtest: returns 404 for missing files
+ok 13 - returns 404 for missing files
+  ---
+  duration_ms: 28.689499
+  type: 'test'
+  ...
+# Subtest: rejects encoded path traversal outside root
+ok 14 - rejects encoded path traversal outside root
+  ---
+  duration_ms: 13.510926
+  type: 'test'
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3628.024417
+L26 CI gate: PASS

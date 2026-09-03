@@ -1,0 +1,35 @@
+{
+  "fixture": "P.C.F.xlsx",
+  "sheet": "Expedientes",
+  "before_fix": {
+    "recognized_records": 539,
+    "metro_urls_recovered": 0,
+    "finca_116422": {
+      "id": "15173394",
+      "sourceUrl": ""
+    }
+  },
+  "after_fix": {
+    "recognized_records": 539,
+    "metro_urls_recovered": 539,
+    "samples": [
+      {
+        "finca": "116422",
+        "id": "15173394",
+        "sourceUrl": "https://metro.sarapiqui.go.cr/processes/15173394"
+      },
+      {
+        "finca": "116432",
+        "id": "15162891",
+        "sourceUrl": "https://metro.sarapiqui.go.cr/processes/15162891"
+      },
+      {
+        "finca": "132195",
+        "id": "15450465",
+        "sourceUrl": "https://metro.sarapiqui.go.cr/processes/15450465"
+      }
+    ]
+  },
+  "fallback_without_specific_url": "https://metro.sarapiqui.go.cr/",
+  "note": "El archivo P.C.F.xlsx del usuario se usó como fixture externo y no se redistribuye dentro del ZIP del proyecto."
+}

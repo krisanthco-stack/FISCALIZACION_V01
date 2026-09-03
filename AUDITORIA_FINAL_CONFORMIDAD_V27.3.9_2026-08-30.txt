@@ -1,0 +1,80 @@
+AUDITORÍA FINAL DE CONFORMIDAD — L-26 V27.3.9
+Fecha de cierre: 2026-08-30
+Base: última versión consolidada del repositorio L-26; no se mezclaron entradas funcionales de versiones anteriores.
+
+1. INTEGRIDAD Y DATOS
+[CONFORME] IndexedDB: LibretaValoracionCR, DB_VERSION=6.
+[CONFORME] No existe deleteDatabase en el runtime.
+[CONFORME] Trámite es identidad protegida; trámites distintos no se fusionan por finca/plano/derecho.
+[CONFORME] Importación JSON/ZIP actualiza/combina sin vaciar la base existente.
+[CONFORME] Recuperación histórica separa identidades en conflicto y religa metadatos de documentos.
+
+2. TRÁMITES Y GESTIÓN
+[CONFORME] Trámites = total de expedientes; En Gestión = trasladados; Activos = total - Gestión.
+[CONFORME] Gestión conserva Notificado y Registrado como estados independientes.
+[CONFORME] Azul: Notificado/Registrado; rojo: >1 año sin acción; amarillo: sin acción y dentro del año.
+[CONFORME] Filtros Año del trámite -> Distrito -> Lugar y filtros Notificados/Registrados.
+[CONFORME] Distritos compactos horizontales en Trámites y Gestión, responsive.
+[CONFORME] Observación para Gestión se muestra únicamente cuando tiene contenido.
+
+3. TERRITORIO
+[CONFORME] Comparación de Distrito/Lugar ignora mayúsculas/minúsculas, acentos, espacios y artículos iniciales equivalentes.
+[CONFORME] Alias explícitos: Hoquetas/Horquetas/Las Horquetas; Palmitas/Las Palmitas.
+[CONFORME] Se eliminó la coincidencia general por distancia de un carácter.
+[CONFORME] Distrito vacío solo se infiere por mismo Lugar cuando existe un único distrito válido; conflictos no se adivinan.
+[CONFORME] Distrito se presenta tipo oración; Lugar/Poblado en formato de nombre propio.
+
+4. INFORMACIÓN GENERAL / INTERFAZ
+[CONFORME] Encabezado principal: Información General.
+[CONFORME] El subbloque GPS conserva Ubicación de la inspección.
+[CONFORME] Se retiró el aviso informativo CRTM05 solicitado sin eliminar coordenadas ni Tomar punto.
+[CONFORME] Servicios 1/2 se mantienen independientes y lado a lado en pantallas anchas; resumen cerrado solo de seleccionados.
+[CONFORME] Agregar vértices es acordeón visual; no destruye vértices ni eventos de mover/arrastrar.
+[CONFORME] Línea de firma de resolución fue bajada sin cambiar los demás datos del responsable.
+
+5. CROQUIS
+[CONFORME] Escala métrica común e isotrópica entre polígonos.
+[CONFORME] Mover polígono conserva forma/escala.
+[CONFORME] Leyenda fija separada del dibujo; polígonos identificados por número.
+[CONFORME] Paginación de 25 y estado de acordeones protegidos por pruebas.
+
+6. PDF
+[CONFORME EN CÓDIGO] PDF.js fijado a 4.10.38 legacy; no existe PDF.js 6.2.108 ni CDN de PDF en runtime.
+[CONFORME EN CÓDIGO] Compatibilidad toHex/fromHex y ruta/cache versionada para impedir reutilizar el motor incompatible anterior.
+[CONFORME] Adjuntar PDF guarda en el expediente y analiza automáticamente.
+[CONFORME] PDF solo completa campos vacíos; no reemplaza trámite ni campos ya informados.
+[CONFORME] Leer página/Leer área no aparecen dentro del visor PDF.
+[CONFORME EN ANDROID] OCR latino configurado como ML Kit bundled, no modelo descargable al primer uso.
+[GATE DE BUILD] Windows/Android ejecutan vendor_pdfjs.py --required; el build falla si no logra incorporar motor, worker, CMaps y fuentes.
+[LIMITACIÓN DEL ENTORNO DE ESTA AUDITORÍA] npm/yarn no resolvieron DNS en el sandbox; no fue posible descargar aquí los binarios PDF.js ni construir físicamente EXE/APK. Esta limitación NO se oculta: la conformidad final del binario debe confirmarse cuando GitHub Actions ejecute el build.
+
+7. LECTOR WEB
+[CONFORME EN CÓDIGO] Windows usa lector interno Electron; Android usa ReaderActivity nativo.
+[CONFORME] Se eliminó la ruta antigua duplicada basada en fetch().
+[CONFORME] Web/PWA no se confunde con aplicación nativa y no afirma que Chrome esté abierto.
+[CONFORME] Leer página y Leer área devuelven datos al caseId/trámite que abrió el enlace.
+[CONFORME] Leer área usa selección rectangular real.
+[CONFORME] Windows y Android esperan hasta 60 s; además esperan mínimo 3 s tras carga y 1,5 s de estabilidad del DOM antes de leer páginas dinámicas.
+[ACLARACIÓN] Consultar una URL web externa nueva requiere conexión a Internet. El funcionamiento local y PDFs adjuntos no deben depender de esa conexión en los builds nativos.
+
+8. ACTUALIZACIÓN / DISTRIBUCIÓN
+[CONFORME] Versión visible, Windows, Android y caché Service Worker unificadas en 27.3.9.
+[CONFORME] El script de Release cambia también la generación del Service Worker para evitar caché de una versión anterior.
+[CONFORME] En EXE/APK nativo el botón no afirma falsamente “Aplicación al día” por Service Worker; muestra la versión instalada. La actualización nativa se distribuye como nuevo EXE/APK firmado en GitHub Releases.
+[CONFORME] GitHub workflows: CI, Windows, Android y Release.
+[CONFORME] Android Release usa firma estable mediante GitHub Secrets.
+[CONFORME] GitHub Android: AGP 9.3.0, Gradle 9.5.0, JDK 17 y actions/setup-java@v5 estable.
+
+9. MACHOTES E INFORMES
+[CONFORME POR REGRESIÓN] Las pruebas de machotes finales y etiquetas de informes permanecen verdes; no se hizo una remaquetación general de los machotes oficiales.
+
+10. EVIDENCIA AUTOMÁTICA AL CIERRE (antes de empaquetar)
+- pytest completo: 196 aprobadas, 1 omitida.
+- Node autocontenido: 62 aprobadas.
+- Escritorio Electron: 11 aprobadas.
+- Gate CI: PASS.
+- Omisión Python: test E2E de navegador bloqueado por política del sandbox; requiere RUN_BROWSER_E2E=1 en entorno que permita navegación automatizada.
+- Fixture Node externo no ejecutado por run_ci.py: l26_excel_real_files.test.js requiere tres Excel externos en /mnt/data (Plantilla_Importacion_Expedientes_V2.xlsx, L-L-P..xlsx y PF- POR FECHA_.xlsx). La prueba sintética de 407 registros sí está incluida y pasa.
+
+CRITERIO DE ENTREGA
+La entrega es REPOSITORIO FUENTE listo para GitHub. No debe presentarse como EXE/APK ya construido dentro de este sandbox. GitHub Actions debe completar el build nativo y su propia compuerta antes de publicar artefactos.

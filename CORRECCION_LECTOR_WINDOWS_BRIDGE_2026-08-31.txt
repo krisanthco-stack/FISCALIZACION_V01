@@ -1,0 +1,44 @@
+FISCALIZACION L-26 — CORRECCION DEL LECTOR INTERNO WINDOWS
+Fecha de corrección: 2026-08-31
+Base corregida: V27.3.9 FINAL AUDITADA GITHUB 2026-08-30
+
+INCIDENCIA REPRODUCIDA
+Al pulsar "Abrir enlace" en Windows aparecía:
+"L-26 está ejecutándose en modo Web/PWA. Para usar el lector interno de enlaces en Windows, abra la aplicación de escritorio instalada."
+incluso cuando el usuario esperaba estar utilizando la aplicación instalada.
+
+CAUSA COMPROBADA EN EL FLUJO DE CODIGO
+Ese aviso solo se alcanza cuando la interfaz no encuentra window.l26Desktop.openSource.
+La versión anterior dependía exclusivamente del bridge expuesto por app-preload.js para reconocer y usar el lector Electron.
+Las pruebas anteriores comprobaban que el preload existía y estaba incluido en el paquete, pero no cubrían una regresión donde el bridge no estuviera disponible en tiempo de ejecución.
+
+CORRECCION APLICADA
+1. Electron abre la ventana principal con la marca inequívoca ?l26Desktop=1, sin cambiar el origen de IndexedDB.
+2. Si window.l26Desktop.openSource está disponible, se conserva el flujo IPC original.
+3. Si la ventana sí es Electron pero el bridge preload no aparece, "Abrir enlace" usa la ruta interna l26-reader://open.
+4. main.js intercepta esa ruta, impide navegación externa y abre createReaderWindow() dentro de L-26.
+5. El retorno de "Leer página" / "Leer área" mantiene IPC y añade un fallback directo a la ventana principal solo cuando window.l26Desktop no existe.
+6. Web/PWA real en Windows conserva el aviso de seguridad y no se confunde con Electron.
+7. Se incrementó la clave de caché del Service Worker con desktop-bridge-fallback-v2 para no conservar la interfaz anterior.
+8. index.html y Fiscalizacion_BI_V27_FINAL.html se mantienen idénticos.
+
+PRUEBA DE REGRESION RED/GREEN
+Antes del cambio, la nueva prueba test_windows_desktop_reader_survives_missing_preload_bridge FALLÓ porque Electron no marcaba la ventana y no existía ruta nativa de respaldo.
+Después del cambio, la misma prueba PASÓ.
+
+AUDITORIA AUTOMATICA POSTERIOR
+- Python: 197 aprobadas; 1 omitida por condición prevista del entorno.
+- Node aplicación: 62 aprobadas.
+- Electron desktop: 11 aprobadas.
+- scripts/run_ci.py: PASS.
+- Sintaxis desktop/main.js: validada con node --check.
+
+ARCHIVOS FUNCIONALES MODIFICADOS
+- index.html
+- Fiscalizacion_BI_V27_FINAL.html
+- desktop/main.js
+- sw.js
+- tests/test_windows_desktop_launch_conformity.py
+
+LIMITACION DE LA AUDITORIA
+El código fuente y los contratos de empaquetado fueron validados en este entorno Linux. El ejecutable Windows final debe ser generado por el workflow Windows/GitHub Actions y la aceptación definitiva del comportamiento visual debe comprobarse ejecutando ese .exe en Windows.
